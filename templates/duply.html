@@ -1,0 +1,46 @@
+{% extends "base2.html" %}
+{% block content %}
+<div class="container-fluid">
+    <div class="pager">
+        Page: <select class="gotoPage"></select>
+        <img src="../static/ico/first.png" class="first" alt="First" title="First page"/>
+        <img src="../static/ico/prev.png" class="prev" alt="Prev" title="Previous page"/>
+        <span class="pagedisplay"></span> <!-- this can be any element, including an input -->
+        <img src="../static/ico/next.png" class="next" alt="Next" title="Next page"/>
+        <img src="../static/ico/last.png" class="last" alt="Last" title="Last page"/>
+        <select class="pagesize">
+            <option value="10">10</option>
+            <option value="20">20</option>
+            <option value="30">30</option>
+            <option value="40">40</option>
+        </select>
+    </div>
+
+    <table id="myTable" class="table table-bordered">
+        <tbody>
+        <tr>
+            <td colspan="10">
+                {%- for result in results %}
+        <tr>
+            {% for img_url in result %}
+            <td>
+                <a href="{{ img_url }}">
+                    <img src="{{ img_url }}" class="img-circle" width="75" height="75">
+                </a>
+            </td>
+            {% endfor %}
+        </tr>
+        <tr>
+            <td colspan="10">
+                {% for img_url in result %}
+                <div>{{ img_url }}</div>
+                {% endfor %}
+            </td>
+        </tr>
+        {% endfor %}
+        </td>
+        </tr>
+        </tbody>
+    </table>
+</div>
+{% endblock %}
