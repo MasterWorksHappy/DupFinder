@@ -35,7 +35,7 @@ def show_me_the_money():
         return render_template(
             'getDupsToDelete.html',
             page_title='Results',
-            results=results)
+            jsonTreeData=results)
         # return render_template(
         #     'duply.html',
         #     page_title='Results',

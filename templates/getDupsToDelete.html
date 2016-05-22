@@ -2,9 +2,9 @@
 {% block content %}
 <h1>
     <button name="submit" type="submit" class="btn btn-default">Submit</button>
-    Selected Directories for Comparison
+    Cleanup! Cleanup! Select Images for Removal
 </h1>
-<div id="mydirtree" class="dirTree"></div>
+<div id="mydirtree" class="resTree"></div>
 
 <script>
     $(function () {
@@ -17,7 +17,7 @@
             'checkbox': {
                 'keep_selected_style': true
             },
-            'plugins': ['wholerow', 'checkbox']
+            'plugins': ['checkbox']
         });
         $("button").click(function () {
             var pdirs = $('#mydirtree').jstree("get_selected")
@@ -36,7 +36,6 @@
             });
         });
     });
-
 
 </script>
 {% endblock %}

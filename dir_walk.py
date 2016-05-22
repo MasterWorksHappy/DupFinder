@@ -6,7 +6,7 @@ class DirWalker(object):
         self.pp = pprint.PrettyPrinter(indent=4)
         self._search_root = os.path.normpath(os.path.dirname(os.path.realpath(__file__)) +
                                              # r"\\static\\media\\pics")
-                                             r"\\static\\media\\pics\\Saved Pictures")
+                                             r"\\static\\media\\pics\\_from Otto")
         self._rowProperty = {}
         self._dir_PathKeys = {}
         self._dir_IdKeys = {}
@@ -56,7 +56,14 @@ class DirWalker(object):
         self.rowProperty = {
             'id': row_cnt,
             'parent': '#',
-            'text': self._search_root}
+            'text': self._search_root,
+            'state': {
+                'opened': True,
+                # 'checkbox_disabled': True,
+                # 'disabled': True,
+                'selected': True
+            }
+        }
         self.dirTree = self.rowProperty
         del self.rowProperty
         for _root, _dirs, files in os.walk(self._search_root):
