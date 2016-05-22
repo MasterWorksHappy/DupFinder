@@ -1,12 +1,13 @@
 import hashlib
 import os
 import os.path
-
+import pprint
 
 class DupFinder():
     def __init__(self):
         self.data = []
         self.dups = {}
+        self.pp = pprint.PrettyPrinter(indent=4)
 
     def searchDirs(self, dir_list):
         for dir in dir_list:  # Iterate the folders given
@@ -50,37 +51,48 @@ class DupFinder():
         results = list(filter(lambda x: len(x) > 1, self.dups.values()))
         return results
 
+    def getTreeResults(self):
+        results = self.getResults()
+        treeResults = []
+        row_cnt = 0
+        parent_id = row_cnt
+        treeResults.append({
+            'id': parent_id,
+            'parent': '#'})
+        if len(results) > 0:
+            for result in results:
+                if row_cnt is not 0:
+                    row_cnt += 1
+                    treeResults.append({
+                        'id': row_cnt,
+                        'parent': parent_id})
+                    parent_id = row_cnt
+                for url in result:
+                    row_cnt += 1
+                    url = self.fixPath(url)
+                    treeResults.append({
+                        'id': row_cnt,
+                        'parent': parent_id,
+                        'text': url  # ,
+                        # 'icon': url
+                    })
+        return treeResults
+
     def getURLResults(self):
-        # new_url = None
-        # varURLx = None
-        # slash_pos = 0
         results = self.getResults()
         urls = []
         if len(results) > 0:
             for result in results:
                 row = []
-                main_pic = result[0]
                 for url in result:
-                    url = url.replace('\\', '/')
-                    # if main_pic == url:
-                    #     new_url = url
-                    #     print("main_pic==url matches")
-                    # else:  # trim prefix from url
-                    #     urllen = len(url)
-                    #     for x in range(0, urllen):
-                    #         varURLx = url[x]
-                    #         varMainPicx = main_pic[x]
-                    #         if varURLx == '/':
-                    #             slash_pos = x
-                    #         if varMainPicx != varURLx:
-                    #             new_url = url[slash_pos + 1:urllen]
-                    #             break
-                    pos = url.find("/static")
-                    url = url[pos:]
-                    # print("short url: ", new_url )
-                    row.append(url)
+                    row.append(self.fixPath(url))
                 urls.append(row)
         return urls
+
+    def fixPath(self, url):
+        url = url.replace('\\', '/')
+        pos = url.find("/static")
+        return url[pos:]
 
     def printResults(self):
         results = self.getResults()
@@ -99,12 +111,18 @@ class DupFinder():
 if __name__ == '__main__':
     df = DupFinder()
     dirList = [
-        'C:\\Users\\Michele\\PycharmProjects\\DeDuper\\static\\media\\pics\\_from Otto\\2015\\2015 Passport Pics',
-        'C:\\Users\\Michele\\PycharmProjects\\DeDuper\\static\\media\\pics\\_from Otto\\2015\\Butch',
-        'C:\\Users\\Michele\\PycharmProjects\\DeDuper\\static\\media\\pics\\_from Otto\\2015\\CCI',
-        "C:\\Users\\Michele\\PycharmProjects\\DeDuper\\static\\media\\pics\\_from Otto\\_all pictures\\1980's\\1983",
-        "C:\\Users\\Michele\\PycharmProjects\\DeDuper\\static\\media\\pics\\_from Otto\\_before pictures\\1980's\\1983"
+        'C:\Users\Michele\PycharmProjects\DupFinder\static\media\pics\Saved Pictures',
+        'C:\Users\Michele\PycharmProjects\DupFinder\static\media\pics\_from Otto\2015'
+        # 'C:\Users\Michele\PycharmProjects\DupFinder\static\media\pics\_from Otto\_before pictures'
     ]
     df.searchDirs(dirList)
+
     urls = df.getURLResults()
-    df.printResults()
+    print "\nURL Results Type: ", type(urls)
+    df.pp.pprint(urls)
+
+    results = df.getTreeResults()
+    print "\nTree Results Type: ", type(results)
+    df.pp.pprint(results)
+
+    # df.printResults()

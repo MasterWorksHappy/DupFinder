@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, flash
+from flask import Flask, render_template, request, redirect, url_for
 
 from DupFinder import DupFinder
 from dir_walk import DirWalker
@@ -8,10 +8,8 @@ app.secret_key = 'mam'
 dw = DirWalker()
 df = DupFinder()
 
-
 @app.route("/")
 def get_dirs():
-    flash("pushing on to Directories Selection")
     return render_template(
         'get_paths.html',
         page_title='Select Directories',
@@ -21,32 +19,35 @@ def get_dirs():
 @app.route("/get_paths", methods=['POST'])
 def get_paths():
     if request.method == 'POST':
-        # dir_indexes = request.get_json()
-        # dir_indexes = json.loads(request.args.get('dirIdxs'))
-        dw.setIndex(request.get_json())
-        # dw.setIndex(request.form.getlist('dirIdxs'))
-        dw.setSearchDirs()
-        flash("pushing on to Show Me the Money")
+        dw.setSearchDirs(request.get_json())
         return redirect(url_for('show_me_the_money'))
-
 
 @app.route("/show_me_the_money")
 def show_me_the_money():
     df.searchDirs(dw.dirList)
-    urls = df.getURLResults()
-    if len(urls) == 0:  # no dups found
-        flash("pushing on to Good Job")
+    # results1 = df.getURLResults()
+    results = df.getTreeResults()
+    if len(results) == 0:  # no dups found
         return render_template(
             'Good Job.html',
             page_title='Good Job!')
     else:  # results ready to be displayed
-
-        flash("pushing on to Duplication Results Display")
         return render_template(
-            'duply.html',
+            'getDupsToDelete.html',
             page_title='Results',
-            results=urls)
+            results=results)
+        # return render_template(
+        #     'duply.html',
+        #     page_title='Results',
+        #     results=results)
 
+
+@app.route("/moveTheFiles", methods=['POST'])
+def moveTheFiles():
+    if request.method == 'POST':
+        pass
+        # dw.setSearchDirs(request.get_json())
+        # return redirect(url_for('show_me_the_money'))
 
 @app.route("/x")
 def about():

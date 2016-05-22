@@ -1,27 +1,16 @@
 {% extends "base2.html" %}
 {% block content %}
+<h1>
+    <button name="submit" type="submit" class="btn btn-default">Submit</button>
+    Pick Files for Re-assignment
+</h1>
 <div class="container-fluid">
-    <div class="pager">
-        Page: <select class="gotoPage"></select>
-        <img src="../static/ico/first.png" class="first" alt="First" title="First page"/>
-        <img src="../static/ico/prev.png" class="prev" alt="Prev" title="Previous page"/>
-        <span class="pagedisplay"></span> <!-- this can be any element, including an input -->
-        <img src="../static/ico/next.png" class="next" alt="Next" title="Next page"/>
-        <img src="../static/ico/last.png" class="last" alt="Last" title="Last page"/>
-        <select class="pagesize">
-            <option value="10">10</option>
-            <option value="20">20</option>
-            <option value="30">30</option>
-            <option value="40">40</option>
-        </select>
-    </div>
-
     <table id="myTable" class="table table-bordered">
         <tbody>
         <tr>
-            <td colspan="10">
-                {%- for result in results %}
+            {%- for result in results %}
         <tr>
+            <!--<td colspan="2">-->
             {% for img_url in result %}
             <td>
                 <a href="{{ img_url }}">
@@ -31,7 +20,7 @@
             {% endfor %}
         </tr>
         <tr>
-            <td colspan="10">
+            <td colspan="3">
                 {% for img_url in result %}
                 <div>{{ img_url }}</div>
                 {% endfor %}
