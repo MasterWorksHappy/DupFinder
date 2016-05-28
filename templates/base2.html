@@ -28,6 +28,17 @@
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.2.1/themes/default/style.min.css"/>
     <style>
+        <!--div#loading {-->
+            <!--top: 200 px;-->
+            <!--margin: auto;-->
+            <!--position: absolute;-->
+            <!--z-index: 1000;-->
+            <!--width: 160px;-->
+            <!--height: 24px;-->
+            <!--background: url(loading.gif) no-repeat;-->
+            <!--cursor: wait;-->
+        <!--}-->
+
         .dirTree {
             <!--display:inline-block;-->
             overflow: auto;
@@ -42,13 +53,35 @@
 
         .resTree .jstree-open > .jstree-anchor > .jstree-checkbox,
         .resTree .jstree-closed > .jstree-anchor > .jstree-checkbox { display:none; }
+
+        .glyphicon.spinning {
+            animation: spin 1s infinite linear;
+            -webkit-animation: spin2 1s infinite linear;
+        }
+
+        @keyframes spin {
+            from { transform: scale(1) rotate(0deg); }
+            to { transform: scale(1) rotate(360deg); }
+        }
+
+        @-webkit-keyframes spin2 {
+            from { -webkit-transform: rotate(0deg); }
+            to { -webkit-transform: rotate(360deg); }
+        }
     </style>
     <script type=text/javascript>
-            $SCRIPT_ROOT = {{ request.script_root|tojson|safe }};
+        $SCRIPT_ROOT = {{ request.script_root|tojson|safe }};
+        <!--function preloader(){-->
+            <!--document.getElementById("loading").style.display = "none";-->
+            <!--document.getElementById("content").style.display = "block";-->
+        <!--}-->
+        <!--window.onload = preloader;-->
+
     </script>
 </head>
 
 <body>
+<!--<div id="loading"></div>-->
 <div class="container-fluid">
     <nav class="navbar navbar-inverse navbar-fixed-top">
         <div class="container">
@@ -76,6 +109,7 @@
     <br>
     <br>
     <br>
+    <div id="loading"></div>
     {% block content %}
     {% endblock %}
 

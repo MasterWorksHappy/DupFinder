@@ -1,16 +1,16 @@
 import hashlib
-import logging
+import ntpath
 import os
 import os.path
 import pprint
 
-LOGGER = logging.getLogger(__name__)
-logging.basicConfig(level=logging.INFO)
 
 class DupFinder():
     def __init__(self):
         self.data = []
         self.dups = {}
+        self._dup_imgs = {}
+        self.results = []
         self.pp = pprint.PrettyPrinter(indent=4)
 
     def searchDirs(self, dir_list):
@@ -52,11 +52,12 @@ class DupFinder():
         return hasher.hexdigest()
 
     def getResults(self):
-        results = list(filter(lambda x: len(x) > 1, self.dups.values()))
-        LOGGER.info(self.pp.pprint(results))
-        return results
+        """converts a dictionary into a list of urls"""
+        self.results = list(filter(lambda x: len(x) > 1, self.dups.values()))
+        return self.results
 
     def getTreeResults(self):
+        """processes the results list of urls into a jquery/jstree tree for display to the user"""
         results = self.getResults()
         treeResults = []
         row_cnt = 0
@@ -102,37 +103,38 @@ class DupFinder():
                         'icon': False,
                         'text': urlRef
                     })
+                    self._dup_imgs[row_cnt] = url
+        if len(treeResults) == 1:  # only contains header, reset to null
+            treeResults = []
         return treeResults
 
-    def getURLResults(self):
-        results = self.getResults()
-        urls = []
-        if len(results) > 0:
-            for result in results:
-                row = []
-                for url in result:
-                    row.append(self.fixPath(url))
-                urls.append(row)
-        return urls
-
     def fixPath(self, url):
+        """convert path from windows to web"""
         url = url.replace('\\', '/')
         pos = url.find("/static")
         return url[pos:]
 
-    def printResults(self):
-        results = self.getResults()
-        if len(results) > 0:
-            print('Duplicates Found:')
-            print('The following files are identical. The name could differ, but the content is identical')
-            print('___________________')
-            for result in results:
-                for subresult in result:
-                    print('\t\t%s' % subresult)
-                    print('___________________')
-        else:
-            print('No duplicate files found.')
+    def move_images(self, indexes, dest_dir, local_root):
+        """using the indexes from the ui, grab filepaths and move to destDir"""
+        imgs_to_move = []
+        for index in indexes:
+            index = index.encode('ascii')
+            imgs_to_move.append(self._get_dir_path(index))
+        self.move_to_final_resting_place(imgs_to_move, dest_dir, local_root)
 
+    def _get_dir_path(self, key):
+        """use the provided key to lookup and return the url"""
+        key = int(key)
+        x = None
+        if key in self._dup_imgs.keys():
+            x = self._dup_imgs[key]
+        return x
+
+    def move_to_final_resting_place(self, files_to_move, dest_dir, local_root):
+        for old_filepath in files_to_move:
+            old_filepath = local_root + old_filepath
+            new_filepath = local_root + dest_dir + "/" + ntpath.basename(old_filepath)
+            os.rename(old_filepath, new_filepath)
 
 if __name__ == '__main__':
     df = DupFinder()
@@ -148,5 +150,3 @@ if __name__ == '__main__':
     results = df.getTreeResults()
     print "\nTree Results Type: ", type(results)
     df.pp.pprint(results)
-
-    # df.printResults()
