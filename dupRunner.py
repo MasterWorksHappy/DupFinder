@@ -3,16 +3,13 @@ from flask import Flask, render_template, request, redirect, url_for
 from DupFinder import DupFinder
 from ImgDirs import ImgDirs
 
-# configuration
 FINAL_RESTING_PLACE = '/static/media/pics/__delete these pictures, they are duplicates___'
 LOCAL_ROOT = 'C:/Users/Michele/PycharmProjects/DupFinder'
-DEBUG = True
+DEBUG = False
 SECRET_KEY = 'mam'
 
 app = Flask(__name__)
 app.config.from_object(__name__)
-
-# app.secret_key = 'mam'
 imgDirs = ImgDirs()
 dupFinder = DupFinder()
 
@@ -47,6 +44,8 @@ def show_me_the_money():
         return render_template(
             'getDupsToDelete.html',
             page_title='Results',
+            num_dirs_searched=len(imgDirs.get_img_dirs_to_search()),
+            num_dups_found=len(results),
             jsonTreeData=results)
 
 
@@ -54,7 +53,8 @@ def show_me_the_money():
 def move_the_files():
     """Moves the dup files selected by the user to a directory for manual removal by the user."""
     if request.method == 'POST':
-        dupFinder.move_images(request.get_json(), app.config['FINAL_RESTING_PLACE'], app.config['LOCAL_ROOT'])
+        file_indexes_to_move = request.get_json()
+        dupFinder.move_images(file_indexes_to_move, app.config['FINAL_RESTING_PLACE'], app.config['LOCAL_ROOT'])
         return redirect(url_for('success'))
 
 
@@ -63,7 +63,8 @@ def success():
     return render_template(
         'success.html',
         page_title='Success',
-        dup_dir=app.config['FINAL_RESTING_PLACE'])
+        num_moved=dupFinder.num_files_moved,
+        dup_dir="C:/Users/Michele/Pictures/__delete these pictures, they are duplicates___")
 
 
 @app.route("/x")
@@ -77,5 +78,5 @@ if __name__ == '__main__':
     app.run()
     # # app.run(debug=False)
     # app.run(debug=True)
-    # app.run(host="0.0.0.0", port="33")
+    # app.run(host="0.0.0.0", port="33")      # http://192.168.1.16:33
     # app.run(debug=True, use_debugger=True, use_reloader=True)

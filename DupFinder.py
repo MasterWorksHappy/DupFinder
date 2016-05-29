@@ -7,13 +7,14 @@ import pprint
 
 class DupFinder():
     def __init__(self):
-        self.data = []
         self.dups = {}
         self._dup_imgs = {}
         self.results = []
+        self.num_files_moved = 0
         self.pp = pprint.PrettyPrinter(indent=4)
 
     def searchDirs(self, dir_list):
+        self.dups = {}
         for dir in dir_list:  # Iterate the folders given
             if os.path.exists(dir):
                 self.findDup(dir)
@@ -96,6 +97,7 @@ class DupFinder():
                     row_cnt += 1
                     url = self.fixPath(url)
                     urlRef = '<a href="' + url + '">' + url + '</a>'
+                    urlRef = urlRef.replace('/static/media/pics', '')
                     """handles the individual urls for each image"""
                     treeResults.append({
                         'id': row_cnt,
@@ -116,6 +118,7 @@ class DupFinder():
 
     def move_images(self, indexes, dest_dir, local_root):
         """using the indexes from the ui, grab filepaths and move to destDir"""
+        self.num_files_moved = len(indexes)
         imgs_to_move = []
         for index in indexes:
             index = index.encode('ascii')
@@ -134,7 +137,12 @@ class DupFinder():
         for old_filepath in files_to_move:
             old_filepath = local_root + old_filepath
             new_filepath = local_root + dest_dir + "/" + ntpath.basename(old_filepath)
-            os.rename(old_filepath, new_filepath)
+            try:
+                os.rename(old_filepath, new_filepath)
+            except WindowsError:
+                base, ext = os.path.splitext(new_filepath)
+                os.rename(new_filepath, base + '_' + ext)
+                os.rename(old_filepath, new_filepath)
 
 if __name__ == '__main__':
     df = DupFinder()

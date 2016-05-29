@@ -7,9 +7,8 @@ class ImgDirs(object):
         self.pp = pprint.PrettyPrinter(indent=4)
         self._search_root = os.path.normpath(os.path.dirname(os.path.realpath(__file__)) +
                                              r"\\static\\media\\pics")
-        self._dir_path_keys = {}
         self._dir_id_keys = {}
-        self._dir_list = []
+        self._search_dirs = []
         self._all_img_dirs = self._load_all_img_dirs()
 
     def get_all_img_dirs(self):
@@ -18,13 +17,14 @@ class ImgDirs(object):
 
     def get_img_dirs_to_search(self):
         """return the list of directories selected by the user"""
-        return self._dir_list
+        return self._search_dirs
 
     def set_img_dirs_to_search(self, indexes):
+        self._search_dirs = []
         """create the list of directories selected by the user from the indexes returned from the ui"""
         for index in indexes:
             index = index.encode('ascii')
-            self._dir_list.append(self._get_dir_path(index))
+            self._search_dirs.append(self._get_dir_path(index))
 
     def _get_dir_path(self, key):
         """use the provided key to lookup and return the dir path"""
@@ -36,12 +36,13 @@ class ImgDirs(object):
 
     def _load_all_img_dirs(self):
         """writes all image dirs into a jQuery - jsTree list[dict{}] structure, used for display to the user"""
+        dir_path_keys = {}
         dir_list = []
         row_cnt = 0
         self._dir_id_keys[row_cnt] = '#'
-        self._dir_path_keys['#'] = row_cnt
+        dir_path_keys['#'] = row_cnt
         self._dir_id_keys[row_cnt] = self._search_root
-        self._dir_path_keys[self._search_root] = row_cnt
+        dir_path_keys[self._search_root] = row_cnt
         row_dict = {
             'id': row_cnt,
             'parent': '#',
@@ -56,10 +57,10 @@ class ImgDirs(object):
             for dir in _dirs:
                 row_cnt += 1
                 self._dir_id_keys[row_cnt] = _root + "\\" + dir
-                self._dir_path_keys[_root + "\\" + dir] = row_cnt
+                dir_path_keys[_root + "\\" + dir] = row_cnt
                 row_dict = {
                     'id': row_cnt,
-                    'parent': self._dir_path_keys[_root],
+                    'parent': dir_path_keys[_root],
                     'text': dir
                 }
                 dir_list.append(row_dict)
