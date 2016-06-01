@@ -75,8 +75,8 @@ def about():
 
 
 if __name__ == '__main__':
-    app.run()
+    # app.run()
     # # app.run(debug=False)
     # app.run(debug=True)
-    # app.run(host="0.0.0.0", port="33")      # http://192.168.1.16:33
+    app.run(host="0.0.0.0", port="33")  # http://192.168.1.16:33
     # app.run(debug=True, use_debugger=True, use_reloader=True)
