@@ -10,8 +10,9 @@ SECRET_KEY = 'mam'
 
 app = Flask(__name__)
 app.config.from_object(__name__)
-imgDirs = ImgDirs()
-dupFinder = DupFinder()
+search_scope = r"\_from Otto\_before pictures\1990's"
+imgDirs = ImgDirs(search_scope)
+dupFinder = DupFinder(r"C:\Users\Michele\Pictures" + search_scope)
 
 
 @app.route("/")
@@ -34,7 +35,8 @@ def get_paths():
 @app.route("/show_me_the_money")
 def show_me_the_money():
     """Executes the duplicate finder on the list of img dirs selected by the user.  Displays the dups to the user."""
-    dupFinder.searchDirs(imgDirs.get_img_dirs_to_search())
+    # dupFinder.searchDirs(imgDirs.get_img_dirs_to_search())
+    dupFinder.load_results_by_dirs(imgDirs.get_img_dirs_to_search())
     results = dupFinder.getTreeResults()
     if len(results) == 0:  # no dups found
         return render_template(

@@ -3,10 +3,10 @@ import pprint
 
 
 class ImgDirs(object):
-    def __init__(self):
+    def __init__(self, dir_ext=None):
         self.pp = pprint.PrettyPrinter(indent=4)
         self._search_root = os.path.normpath(os.path.dirname(os.path.realpath(__file__)) +
-                                             r"\\static\\media\\pics")
+                                             r"\\static\\media\\pics" + dir_ext)
         self._dir_id_keys = {}
         self._search_dirs = []
         self._all_img_dirs = self._load_all_img_dirs()
