@@ -13,6 +13,7 @@
 <script>
     $(function () {
         var treeData = {{ jsonTreeData|tojson|safe }}
+        console.log(treeData);
         $('#mydirtree').jstree({
             'core': {
                 'data': treeData,
