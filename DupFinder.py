@@ -3,19 +3,9 @@ import ntpath
 import os
 import os.path
 import pprint
+from collections import OrderedDict
 
-
-def hashfile(path):
-    hasher = hashlib.md5()
-    f = open(path)
-    while True:
-        buf = f.read(128)
-        if buf == '':
-            break
-        hasher.update(buf)
-    f.close()
-    return hasher.hexdigest()
-
+pp = pprint.PrettyPrinter(indent=4)
 
 def normalize_pathname(path):
     path = path.replace("C:\\Users\\Michele\\Pictures\\", "")
@@ -23,51 +13,136 @@ def normalize_pathname(path):
     return path
 
 
+class DataMinder(object):
+    """
+    Provides:
+        create_entry(file_hash=file_hash, dir_name=dir_name, file_path=path)
+        flash_entries()
+        get_dirs_with_dups()
+        get_files_bydir(dir_list=dir_list)
+        del_by_list_of_files(files_to_move)
+    """
+
+    def __init__(self):
+        self.by_hash_dir_file = {}
+
+    def gen_spt_data(self):
+        self.by_dir_file = {}
+        self.by_file_hash = {}
+        self.by_dir_file_groups = {}
+        self.by_hash_files = {}
+        self.num_hashes = None
+        self.num_hashes = len(self.by_hash_dir_file)
+        for file_hash, v in self.by_hash_dir_file.iteritems():
+            for dir_name, file_path_list in v.iteritems():
+                for file_path in file_path_list:
+                    self.new_dir_file(dir_name=dir_name, file_path=file_path)
+                    self.new_file_hash(file_hash=file_hash, file_path=file_path)
+                    self.new_dir_file_groups(dir_name=dir_name, file_group=v.values())
+                    self.new_hash_file(file_hash=file_hash, file_path=file_path)
+
+    def new_dir_file_groups(self, dir_name=None, file_group=None):
+        if dir_name not in self.by_dir_file_groups.keys():
+            self.by_dir_file_groups[dir_name] = []
+        try:
+            self.by_dir_file_groups[dir_name] += file_group  # do not append ... merge the lists
+        except KeyError:
+            print "****"
+            pass
+
+    def new_dir_file(self, dir_name=None, file_path=None):
+        if dir_name not in self.by_dir_file.keys():
+            self.by_dir_file[dir_name] = []
+        try:
+            self.by_dir_file[dir_name].append(file_path)
+        except KeyError:
+            print "****"
+            pass
+
+    def new_hash_file(self, file_hash=None, file_path=None):
+        if file_hash not in self.by_hash_files.keys():
+            self.by_hash_files[file_hash] = []
+        try:
+            self.by_hash_files[file_hash].append(file_path)
+        except KeyError:
+            print "****"
+            pass
+
+    def new_file_hash(self, file_hash=None, file_path=None):
+        if file_path not in self.by_file_hash.keys():
+            self.by_file_hash[file_path] = file_hash
+
+    def create_entry(self, file_hash=None, dir_name=None, file_path=None):
+        if file_hash not in self.by_hash_dir_file.keys():
+            self.by_hash_dir_file[file_hash] = {}
+        if dir_name not in self.by_hash_dir_file[file_hash]:
+            self.by_hash_dir_file[file_hash][dir_name] = []
+        try:
+            self.by_hash_dir_file[file_hash][dir_name].append(file_path)
+        except KeyError:
+            print "****"
+            pass
+
+    def flash_entries(self):
+        """
+        {hash: {dir: [files]}}
+        the following is necessary to strip out hashes that only contain one result
+        within a dir there should be > 1 files
+        if a hash has > 1 dir then that too is a keeper
+        """
+        tmp_dict = {out_k: {in_k: in_v for in_k, in_v in out_v.items()
+                            if (len(out_v) == 1 and len(in_v) > 1) or len(out_v) > 1}
+                    for out_k, out_v in self.by_hash_dir_file.items()}
+        """
+        this next step removes all the empty entries ... this is the only way I can think to do it
+        """
+        self.by_hash_dir_file = {k: v for k, v in tmp_dict.iteritems() if len(v) > 0}
+        self.gen_spt_data()
+        # print "by_hash_dir_file:\n", pp.pprint(self.by_hash_dir_file)
+
+    def get_files_byhash(self, dir_list=None):
+        files_byhash = {}
+        tmp_dict = {}
+        for dir_name in dir_list:
+            dir_name = str(dir_name)
+            tmp_dict = {k: v for k, v in self.by_hash_files.iteritems() if any(dir_name in s for s in v)}
+            files_byhash.update(tmp_dict)
+        OrderedDict(sorted(files_byhash.items(), key=lambda t: len(t[1])))
+        return files_byhash
+
+    def del_by_list_of_files(self, files_to_move=None):
+        for file_path in files_to_move:
+            file_hash = self.by_file_hash[file_path]
+            for dir_name, file_list in self.by_hash_dir_file[file_hash].items():
+                if file_path in file_list:
+                    self.by_hash_dir_file[file_hash][dir_name].remove(file_path)
+        self.flash_entries()
+
+    def get_dirs_with_dups(self):
+        dup_dirs = self.by_dir_file.keys()
+        dup_dirs.sort()
+        return dup_dirs
+
+    
 class DupFinder(object):
-    def __init__(self, dir_to_dup_srch):
-        self.pp = pprint.PrettyPrinter(indent=4)
-        self.dups = {}
-        self._dup_imgs = {}
-        self.results = []
+    def __init__(self, search_dir, dest_dir, local_root):
+        self.dm = DataMinder()
+        self.dest_dir = dest_dir
+        self.local_root = local_root
         self.num_files_moved = 0
-        self.dir_has_dups = {}
-        self.find_dup(dir_to_dup_srch)
+        self.find_dup(search_dir)
         self.num_dirs_reviewed = 0
         self.num_img_dups = 0
 
-    # def searchDirs(self, dir_list):
-    #     self.dups = {}
-    #     for dir in dir_list:  # Iterate the folders given
-    #         if os.path.exists(dir):
-    #             self.findDup(dir)
+    def get_dirs_with_dups(self):
+        return self.dm.get_dirs_with_dups()
 
-    # def num_files(self, dir_name):
-    #     num_files = None
-    #     if dir_name:
-    #         # num_files = len([name for name in os.listdir('.') if os.path.isfile(dir_name)])
-    #         num_files = sum(os.path.isfile(os.path.join(dir_name, f)) for f in os.listdir(dir_name))
-    #     return num_files
-
-    def move_to_final_resting_place(self, files_to_move, dest_dir, local_root):
-        # noinspection PyAugmentAssignment
-        self.num_files_moved = len(files_to_move)
-        for old_filepath in files_to_move:
-            old_filepath = "{}/static/media/pics{}".format(local_root, old_filepath.replace('\\', '/'))
-            new_filepath = local_root + dest_dir + "/" + ntpath.basename(old_filepath)
-            try:
-                os.rename(old_filepath, new_filepath)
-            except WindowsError:
-                base, ext = os.path.splitext(new_filepath)
-                os.rename(new_filepath, base + '_' + ext)
-                os.rename(old_filepath, new_filepath)
-
-    def dirs_with_dups(self):
-        x = self.dir_has_dups.keys()
-        print "Dirs with Dups: ", self.pp.pprint(x)
-        return x
+    def get_num_hashes(self):
+        return self.dm.num_hashes
 
     def find_dup(self, parent_folder):
         """
+        searches for duplicate img files from the parent down
         :param parent_folder: directory to search for dups
         :return: None, loads two data structures:
             self.dups: format {hash:[list of file pathnames]}
@@ -75,184 +150,58 @@ class DupFinder(object):
         """
         img_types = ['.jpg', '.jpe', '.jpeg']
         for dname, subdirs, fileList in os.walk(parent_folder):
-            for filename in fileList:
-                fname, fext = os.path.splitext(filename)
-                if fext in img_types:
-                    path = os.path.join(dname, filename)
-                    file_hash = hashfile(path)
-                    path = normalize_pathname(path)
-                    dir_name = normalize_pathname(dname)
-                    if file_hash in self.dups:  # file is a dup
-                        if path not in self.dups[file_hash]:  # add path to hash list
-                            self.dups[file_hash].append(path)
-                        if dir_name in self.dir_has_dups:
-                            if file_hash not in self.dir_has_dups[dir_name]:
-                                self.dir_has_dups[dir_name].append(file_hash)
-                        else:
-                            self.dir_has_dups[dir_name] = [file_hash]
-                    else:  # first appearance of hash
-                        self.dups[file_hash] = [path]
-        print "Finished finding all dups."
+            if dname is not self.dest_dir:  # filter out dest dir
+                for filename in fileList:
+                    fname, fext = os.path.splitext(filename)
+                    if fext in img_types:
+                        path = os.path.join(dname, filename)
+                        file_hash = hashlib.md5(open(path, 'rb').read()).hexdigest()
+                        path = normalize_pathname(path)
+                        dir_name = normalize_pathname(dname)
+                        self.dm.create_entry(file_hash=file_hash, dir_name=dir_name, file_path=path)
+        self.dm.flash_entries()
 
-    def load_results_by_dirs(self, dir_list):
+    def get_img_urls(self, dir_list):
         """
-        Iterates over the list of dirs selected in the ui to produce
-        a list of lists of duplicate images found in those dirs
-        :param dir_list: list of dirs user wants to review for dup images
-        :return:
+        a list of dirs are passed in
+        retrieve all urls for the duplicate images listed for those dirs
+        {out_k: {in_k: [in_v]}} ... out_v is the {in_k: [in_v]} section
+        self.dedups[file_hash][dir_name] = [list of dup img urls]
         """
-        img_urls = list()
         self.num_dirs_reviewed = len(dir_list)
-        for dName in dir_list:  # Iterate the folders given
-            if dName in self.dir_has_dups.keys():
-                for file_hash in self.dir_has_dups[dName]:
-                    img_urls.append(self.dups[file_hash])
-        print "Results: ", self.pp.pprint(img_urls)
+        img_urls = self.dm.get_files_byhash(dir_list=dir_list)
         self.num_img_dups = len(img_urls)
         return img_urls
 
-    # def getResults(self):
-    #     """converts a dictionary into a list of urls"""
-    #     self.results = list(filter(lambda x: len(x) > 1, self.dups.values()))
-    #     return self.results
-
-    def getTreeResults(self):
-        """processes the results list of urls into a jquery/jstree tree for display to the user"""
-        results = self.res
-        treeResults = []
-        row_cnt = 0
-        parent_id = row_cnt
-        """ manages the root level"""
-        treeResults.append({
-            'id': parent_id,
-            'parent': '#',
-            'icon': False,
-            'state': {
-                'opened': True,
-                'checkbox_disabled': True,
-                'disabled': True
-            }
-        })
-        if len(results) > 0:
-            for result in results:
-                pic_url = self.reset_web_prefix(result[0])
-                # print "pic_url: ", pic_url
-                fancyPic = \
-                    '<img src="' + pic_url + '" class="img-circle" width="50" height="50">'
-                row_cnt += 1
-                """ handles the hash group level"""
-                treeResults.append({
-                    'id': row_cnt,
-                    'parent': 0,
-                    'icon': False,
-                    'text': fancyPic,
-                    'state': {
-                        'opened': True,
-                        'checkbox_disabled': True,
-                        'disabled': True
-                    }
-                })
-                parent_id = row_cnt
-                for url in result:
-                    row_cnt += 1
-                    url = self.reset_web_prefix(url)
-                    urlRef = '<a href="' + url + '">' + url + '</a>'
-                    urlRef = urlRef.replace('/static/media/pics', '')
-                    """handles the individual urls for each image"""
-                    treeResults.append({
-                        'id': row_cnt,
-                        'parent': parent_id,
-                        'icon': False,
-                        'text': urlRef
-                    })
-                    self._dup_imgs[row_cnt] = url
-        if len(treeResults) == 1:  # only contains header, reset to null
-            treeResults = []
-        return treeResults
-
-    # def fixPath(self, url):
-    #     """convert path from windows to web"""
-    #     url = url.replace('\\', '/')
-    #     pos = url.find("/static")
-    #     return url[pos:]
-
-    def move_images(self, indexes, dest_dir, local_root):
-        """using the indexes from the ui, grab filepaths and move to destDir"""
-        self.num_files_moved = len(indexes)
-        imgs_to_move = []
-        for index in indexes:
-            index = index.encode('ascii')
-            imgs_to_move.append(self._get_dir_path(index))
-        move_to_final_resting_place(imgs_to_move, dest_dir, local_root)
-
-        # def _get_dir_path(self, key):
-        #     """use the provided key to lookup and return the url"""
-        #     key = int(key)
-        #     x = None
-        #     if key in self._dup_imgs.keys():
-        #         x = self._dup_imgs[key]
-        #     return x
-
-        # def set_img_dirs_to_display(self, indexes):
-        #     """create the list of directories selected by the user from the indexes returned from the ui"""
-        #     self._search_dirs = indexes
-
-        # def get_img_dirs_to_search(self):
-        #     """return the list of directories selected by the user"""
-        #     return self._search_dirs
-
-        # def _get_dir_path(self, key):
-        #     """use the provided key to lookup and return the dir path"""
-        #     key = int(key)
-        #     x = None
-        #     if key in self.get_dirs_with_dups():
-        #         x = self._dir_id_keys[key]
-        #     return x
-
-        # def append_path(self, root, paths):
-        #     if paths:
-        #         before, sep, after = paths.partition("\\")
-        #         if 'children' not in root:
-        #             child = root.setdefault('children', [])
-        #             child.setdefault('text', before)
-        #             child.setdefault('state', {
-        #                 'opened': True,
-        #                 'selected': False
-        #             })
-        #         else:
-        #             root['children'].append(
-        #                 {
-        #                     'text': before,
-        #                     'state': {
-        #                         'opened': True,
-        #                         'selected': False
-        #                     },
-        #                     'children': []
-        #                 }
-        #             )
-        #         self.append_path(root, after)
-        #
-        # def get_path(self, root, paths):
-        #     if paths:
-        #         before, sep, after = paths.partition("\\")
-        #         child = root.setdefault(before, {})
-        #         self.get_path(child, after)
-
-        # def get_dir_list_to_display(self):
-        #     """
-        #     takes in a flat list of dirs and returns a hierarchical dict
-        #     :return: hDict: hierarchical dict of dirs
-        #     """
-        #     self.hDict = {}
-        #     for p in self.dirs_with_dups():
-        #         self.get_path(self.hDict, p)
-        #     return [self.hDict]
-
+    def move_to_final_resting_place(self, files_to_move):
+        self.num_files_moved = len(files_to_move)
+        for old_filepath in files_to_move:
+            old_filepath = "{}/static/media/pics{}".format(self.local_root, old_filepath.replace('\\', '/'))
+            new_filepath = self.local_root + self.dest_dir + "/" + ntpath.basename(old_filepath)
+            try:
+                os.rename(old_filepath, new_filepath)
+            except WindowsError:
+                base, ext = os.path.splitext(new_filepath)
+                os.rename(new_filepath, base + '_' + ext)
+                os.rename(old_filepath, new_filepath)
+        self.dm.del_by_list_of_files(files_to_move)
 
 if __name__ == '__main__':
     search_scope = r"\_from Otto\_before pictures\1990's"
-    df = DupFinder(r"C:\Users\Michele\Pictures" + search_scope)
+    df = DupFinder(search_dir=r"C:\Users\Michele\Pictures" + search_scope,
+                   dest_dir='/static/media/pics/__delete these pictures, they are duplicates___',
+                   local_root='C:/Users/Michele/PycharmProjects/DupFinder'
+                   )
+    df.get_dirs_with_dups()
+
+    # print "dedups ({}):\n".format(len(df.dedups))
+    # pp.pprint(df.dedups)
     #
+    # files_to_move = [ "_from Otto\\_before pictures\\1990's\\1995\\1995 0301 08.jpg",
+    #                   "_from Otto\\_before pictures\\1990's\\1993\\19930115 - 11.jpg",
+    #                   "_from Otto\\_before pictures\\1990's\\1993\\199304 - Becky & Gina - Copy.jpg"]
+    # df.del_dedup_entry(files_to_move)
+
     # dups = df.dups
     # print "Dups type/len : ", type(dups), "/", len(dups)
     # print "Dups: ", df.pp.pprint(dups)
@@ -261,24 +210,6 @@ if __name__ == '__main__':
     # print "Dir has Dups type/len : ", type(dhd), "/", len(dhd)
     # print "Dir has Dups: ", df.pp.pprint(dhd)
     #
-    # df.load_results_by_dirs([r"C:\Users\Michele\Pictures\_from Otto\_before pictures\1990's\1993"])
-    # res2 = df.res
-    # print "Res 2 results type/len : ", type(res2), "/", len(res2)
-    # print "Res results: ", df.pp.pprint(res2)
-    #
-    # res1 = df.getResults()
-    # print "Res 1 results type/len : ", type(res1), "/", len(res1)
-    # print "Res 1 results: ", df.pp.pprint(res1)
-    #
-    # diff = [a for a in res1 + res2 if (a not in res1) or (a not in res2)]
-    # print "diff type/len : ", type(diff), "/", len(diff)
-    # print "diff b/t ", df.pp.pprint(diff)
-    # # print "get tree results: ", df.pp.pprint(df.getTreeResults())
-
-    dwd = df.dirs_with_dups()
-    print "Dirs with Dups type/len : ", type(dwd), "/", len(dwd)
-    print "Dirs with Dups: ", df.pp.pprint(dwd)
-
-    # hdir = df.get_dir_list_to_display()
-    # print "Hierarchy Dirs with Dups type/len : ", type(hdir), "/", len(hdir)
-    # print "HierarchyDirs with Dups: ", df.pp.pprint(hdir)
+    # dwd = df.dirs_with_dups()
+    # print "Dirs with Dups type/len : ", type(dwd), "/", len(dwd)
+    # print "Dirs with Dups: ", df.pp.pprint(dwd)
