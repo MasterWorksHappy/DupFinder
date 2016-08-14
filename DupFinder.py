@@ -31,24 +31,13 @@ class DataMinder(object):
         self.by_file_hash = {}
         self.by_dir_file_groups = {}
         self.by_hash_files = {}
-        self.num_hashes = None
-        self.num_hashes = len(self.by_hash_dir_file)
+        self.num_uniq_files = len(self.by_hash_dir_file)
+        self.num_dirs_reviewed = len(self.by_hash_dir_file.keys())
         for file_hash, v in self.by_hash_dir_file.iteritems():
             for dir_name, file_path_list in v.iteritems():
                 for file_path in file_path_list:
                     self.new_dir_file(dir_name=dir_name, file_path=file_path)
-                    self.new_file_hash(file_hash=file_hash, file_path=file_path)
-                    self.new_dir_file_groups(dir_name=dir_name, file_group=v.values())
                     self.new_hash_file(file_hash=file_hash, file_path=file_path)
-
-    def new_dir_file_groups(self, dir_name=None, file_group=None):
-        if dir_name not in self.by_dir_file_groups.keys():
-            self.by_dir_file_groups[dir_name] = []
-        try:
-            self.by_dir_file_groups[dir_name] += file_group  # do not append ... merge the lists
-        except KeyError:
-            print "****"
-            pass
 
     def new_dir_file(self, dir_name=None, file_path=None):
         if dir_name not in self.by_dir_file.keys():
@@ -67,10 +56,6 @@ class DataMinder(object):
         except KeyError:
             print "****"
             pass
-
-    def new_file_hash(self, file_hash=None, file_path=None):
-        if file_path not in self.by_file_hash.keys():
-            self.by_file_hash[file_path] = file_hash
 
     def create_entry(self, file_hash=None, dir_name=None, file_path=None):
         if file_hash not in self.by_hash_dir_file.keys():
@@ -126,6 +111,7 @@ class DataMinder(object):
     
 class DupFinder(object):
     def __init__(self, search_dir, dest_dir, local_root):
+        print "Dup checking %s" % search_dir
         self.dm = DataMinder()
         self.dest_dir = dest_dir
         self.local_root = local_root
@@ -133,12 +119,10 @@ class DupFinder(object):
         self.find_dup(search_dir)
         self.num_dirs_reviewed = 0
         self.num_img_dups = 0
+        self.num_files_confirmed = None
 
     def get_dirs_with_dups(self):
         return self.dm.get_dirs_with_dups()
-
-    def get_num_hashes(self):
-        return self.dm.num_hashes
 
     def find_dup(self, parent_folder):
         """
@@ -161,6 +145,20 @@ class DupFinder(object):
                         self.dm.create_entry(file_hash=file_hash, dir_name=dir_name, file_path=path)
         self.dm.flash_entries()
 
+    def confirmer(self):
+        results = []
+        self.num_files_confirmed = 0
+        for dname, subdirs, fileList in os.walk(self.local_root + self.dest_dir):
+            for filename in fileList:
+                self.num_files_confirmed += 1
+                path = os.path.join(dname, filename)
+                file_hash = hashlib.md5(open(path, 'rb').read()).hexdigest()
+                if file_hash not in self.dm.by_hash_files.keys():
+                    path = path.replace(self.local_root, '')
+                    path = path.replace('\\', '/')
+                    results.append([path, filename])
+        return results
+
     def get_img_urls(self, dir_list):
         """
         a list of dirs are passed in
@@ -182,17 +180,27 @@ class DupFinder(object):
                 os.rename(old_filepath, new_filepath)
             except WindowsError:
                 base, ext = os.path.splitext(new_filepath)
+                print base + '_' + ext
                 os.rename(new_filepath, base + '_' + ext)
                 os.rename(old_filepath, new_filepath)
         self.dm.del_by_list_of_files(files_to_move)
 
 if __name__ == '__main__':
-    search_scope = r"\_from Otto\_before pictures\1990's"
-    df = DupFinder(search_dir=r"C:\Users\Michele\Pictures" + search_scope,
-                   dest_dir='/static/media/pics/__delete these pictures, they are duplicates___',
-                   local_root='C:/Users/Michele/PycharmProjects/DupFinder'
-                   )
-    df.get_dirs_with_dups()
+    # search_scope = r"\_from Otto\_before pictures\1990's"
+    # df = DupFinder(search_dir=r"C:\Users\Michele\Pictures" + search_scope,
+    #                dest_dir='/static/media/pics/__delete these pictures, they are duplicates___',
+    #                local_root='C:/Users/Michele/PycharmProjects/DupFinder'
+    #                )
+    # df.get_dirs_with_dups()
+
+    # for dname, subdirs, fileList in os.walk(r"C:\Users\Michele\Pictures"):
+    #     print "hello"
+
+    root = r"C:\Users\Michele\Pictures"
+    for item in os.listdir(root):
+        ritem = os.path.join(root, item)
+        if os.path.isdir(ritem):
+            print ritem
 
     # print "dedups ({}):\n".format(len(df.dedups))
     # pp.pprint(df.dedups)

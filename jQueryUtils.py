@@ -7,6 +7,7 @@ class jQTree(object):
     def __init__(self):
         self.pp = pprint.PrettyPrinter(indent=4)
         self.tree_list = []
+        self.tree_dict = {}
 
 
 class DirTreeUI(jQTree):
@@ -22,8 +23,8 @@ class DirTreeUI(jQTree):
         takes list of dirs from dup finder and splits them into parent and base
         to make an intermediary data structure
         :param
-        :return: None, but loads dir_tree_list: row_cnt, parent, base
-        tree_list:  id, parent, base
+        :return: None, but loads dir_tree_list
+        dir_tree_list:  dirname, parent, base
         """
         dir_tree_list = list()
         parent, base = self.scope.rsplit('\\', 1)
@@ -40,10 +41,11 @@ class DirTreeUI(jQTree):
         :param dup_dirs: a hierarchical dictionary of dup dirs
         :return: a jQuery tree: a list of dictionaries
         """
-        dir_list = list()
+        tree_list = list()
+        streamer_dict = dict()
         for row in self.process_dup_dirs(dup_dirs):
             dirname, parent, base = row
-            dir_list.append({
+            node_dict = {
                 'id': dirname,
                 'parent': parent,
                 'text': base,
@@ -51,12 +53,28 @@ class DirTreeUI(jQTree):
                     'opened': True,
                     'selected': False
                 }
-            })
-        return dir_list
+            }
+            tree_list.append(node_dict)
+            if parent not in streamer_dict:
+                streamer_dict[parent] = []
+            streamer_dict[parent].append(node_dict)
+        self.tree_list = tree_list
+        self.tree_dict = streamer_dict
 
-    def get_dir_tree(self, dup_dirs):
-        self.tree_list = self.make_tree(dup_dirs)
+    def get_tree_list(self):
         return self.tree_list
+
+    def get_tree_dict(self):
+        return self.tree_dict
+
+    def get_tree_branch_dict(self, dir_id):
+        return self.tree_dict[dir_id]
+
+    def get_tree_branches(self, dir_ids):
+        bouquet = {}
+        for dir_id in dir_ids:
+            bouquet.update(self.tree_dict[dir_id])
+        return bouquet
 
 
 def reset_web_prefix(url):
@@ -93,8 +111,7 @@ def process_img_urls(img_urls=None):
         img_list.append([hash_id, parent_id, get_pic_url(result_list[0]), True])  # hash level rec with pic
         entry_id = 0
         for url in result_list:
-            # hash_item = "%s_%s" % (hash_id, entry_id)
-            clickable = '<a href="%s">"%s"</a>' % (reset_web_prefix(url), url)  # url.replace('\\', '/')
+            clickable = '<a href="%s">"%s"</a>' % (reset_web_prefix(url), url)
             img_list.append([url, hash_id, clickable, False])  # dup img level rec, text only
             entry_id += 1
     return img_list  # id, parent_id, display_item, state

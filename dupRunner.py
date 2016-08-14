@@ -2,6 +2,7 @@ import pprint
 
 from flask import Flask, render_template, request, redirect, url_for
 
+import config
 from DupFinder import DupFinder
 from jQueryUtils import DirTreeUI, ImgTreeUI
 
@@ -13,31 +14,62 @@ from jQueryUtils import DirTreeUI, ImgTreeUI
     4) User selects the files they want moved to the dir for deletion
 """
 
-FINAL_RESTING_PLACE = '/static/media/pics/__delete these pictures, they are duplicates___'
+FINAL_RESTING_PLACE = config.pathnames['trash']
+# FINAL_RESTING_PLACE = '/static/media/pics/__delete these pictures, they are duplicates___'
 LOCAL_ROOT = 'C:/Users/Michele/PycharmProjects/DupFinder'
 DEBUG = False
 SECRET_KEY = 'mam'
+# SEARCH_SCOPE = config.pathnames['test']
 SEARCH_SCOPE = r"_from Otto\_before pictures\1990's"
 app = Flask(__name__)
 app.config.from_object(__name__)
-dup_finder = DupFinder(search_dir=r'C:\Users\Michele\Pictures\\' + app.config['SEARCH_SCOPE'],
+
+dup_finder = DupFinder(search_dir=r"C:\Users\Michele\Pictures\\" + app.config['SEARCH_SCOPE'],
                        dest_dir=app.config['FINAL_RESTING_PLACE'],
                        local_root=app.config['LOCAL_ROOT']
                        )
 dir_tree = DirTreeUI(app.config['SEARCH_SCOPE'])
 img_tree = ImgTreeUI()
 pp = pprint.PrettyPrinter(indent=4)
+dir_tree.make_tree(dup_finder.dm.get_dirs_with_dups())
 
 
 @app.route("/")
 def get_dirs():
     """Displays to the user image dirs containing dups for selection"""
-    dup_dir_tree = dir_tree.get_dir_tree(dup_finder.get_dirs_with_dups())
+    # dup_dir_tree = dir_tree.get_dir_tree(dup_finder.dm.get_dirs_with_dups())
     return render_template(
         'get_paths.html',
-        num_hashes_found=dup_finder.get_num_hashes(),
+        num_hashes_found=dup_finder.dm.num_uniq_files,
+        num_dirs_reviewed=dup_finder.dm.num_dirs_reviewed,
         page_title='Select Directories',
-        jsonTreeData=dup_dir_tree)
+        jsonTreeData=dir_tree.get_tree_dict())
+
+
+@app.route("/get_a_dir", methods=['GET', 'POST'])
+def get_a_dir():
+    """Displays to the user an image dir containing dups for selection"""
+    id = request.args.get('id')
+    print "id: >", id, "<"
+    if not id:
+        id = '#'
+    return render_template(
+        'get_paths.html',
+        num_hashes_found=dup_finder.dm.num_uniq_files,
+        num_dirs_reviewed=dup_finder.dm.num_dirs_reviewed,
+        page_title='Select Directories',
+        jsonTreeData=dir_tree.get_tree_branch_dict(id))
+
+
+@app.route("/get_more_dirs/<id>", methods=['GET', 'POST'])
+def get_more_dirs(id):
+    """Displays to the user image dirs containing dups for selection"""
+    return render_template(
+        'get_paths.html',
+        num_hashes_found=dup_finder.dm.num_uniq_files,
+        num_dirs_reviewed=dup_finder.dm.num_dirs_reviewed,
+        page_title='Select Directories',
+        jsonTreeData=dir_tree.get_tree_branches(id))
 
 
 @app.route("/get_paths", methods=['POST'])
@@ -84,6 +116,16 @@ def success():
         page_title='Success',
         num_moved=dup_finder.num_files_moved,
         dup_dir="C:/Users/Michele/Pictures/__delete these pictures, they are duplicates___")
+
+
+@app.route("/confirmer")
+def confirmer():
+    print "confirmer"
+    return render_template(
+        'confirmer.html',
+        issues=dup_finder.confirmer(),
+        num_reviewed=dup_finder.num_files_confirmed,
+        page_title='Confirmer')
 
 
 @app.route("/x")

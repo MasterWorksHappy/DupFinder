@@ -1,0 +1,21 @@
+{% extends "base2.html" %}
+{% block content %}
+<br>
+<br>
+<div class="starter-template">
+    <h1>Confirmer Results!</h1>
+    <p class="lead">{{ num_reviewed }} Files Reviewed</p>
+</div>
+<div class="container">
+    <div class="row">
+        {% for issue in issues %}
+        <div class="col-sm-4">
+            <a href="{{ issue[0] }}" target="_blank">{{ issue[1] }}</a>
+        </div>
+        <div class="col-sm-4">
+            <img src="{{ issue[1] }}" class="img-circle" width="75" height="75">
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}
