@@ -68,7 +68,9 @@ class DirTreeUI(jQTree):
         return self.tree_dict
 
     def get_tree_branch_dict(self, dir_id):
-        return self.tree_dict[dir_id]
+        x = self.tree_dict[dir_id]
+        print "get_tree_branch_dict[", dir_id, "]:\n", pp.pprint(x)
+        return x
 
     def get_tree_branches(self, dir_ids):
         bouquet = {}

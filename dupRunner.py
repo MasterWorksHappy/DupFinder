@@ -7,6 +7,10 @@ from DupFinder import DupFinder
 from jQueryUtils import DirTreeUI, ImgTreeUI
 
 """
+    SETUP
+    1) Create a symbolic link in the ..\static\media directory:
+       mklink /D pics "C:\Users\Maste\_My Stuff\Pictures"
+
     Dup Runner Process Flow
     1) At server start, dup finder runs and creates the master list of dup pics and their dirs
     2) Users are offered a list of dirs to select for review
@@ -16,7 +20,7 @@ from jQueryUtils import DirTreeUI, ImgTreeUI
 
 FINAL_RESTING_PLACE = config.pathnames['trash']
 # FINAL_RESTING_PLACE = '/static/media/pics/__delete these pictures, they are duplicates___'
-LOCAL_ROOT = 'C:/Users/Michele/PycharmProjects/DupFinder'
+LOCAL_ROOT = '"C:\Users\Maste\_My Stuff\PycharmProjects\DupFinder"'
 DEBUG = False
 SECRET_KEY = 'mam'
 # SEARCH_SCOPE = config.pathnames['test']
@@ -24,7 +28,7 @@ SEARCH_SCOPE = r"_from Otto\_before pictures\1990's"
 app = Flask(__name__)
 app.config.from_object(__name__)
 
-dup_finder = DupFinder(search_dir=r"C:\Users\Michele\Pictures\\" + app.config['SEARCH_SCOPE'],
+dup_finder = DupFinder(search_dir=r"C:\Users\Maste\_My Stuff\Pictures\\" + app.config['SEARCH_SCOPE'],
                        dest_dir=app.config['FINAL_RESTING_PLACE'],
                        local_root=app.config['LOCAL_ROOT']
                        )
@@ -42,8 +46,8 @@ def get_dirs():
         'get_paths.html',
         num_hashes_found=dup_finder.dm.num_uniq_files,
         num_dirs_reviewed=dup_finder.dm.num_dirs_reviewed,
-        page_title='Select Directories',
-        jsonTreeData=dir_tree.get_tree_dict())
+        jsonTreeData=dir_tree.get_tree_dict(),
+        page_title='Select Directories')
 
 
 @app.route("/get_a_dir", methods=['GET', 'POST'])

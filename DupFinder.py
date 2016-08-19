@@ -8,8 +8,8 @@ from collections import OrderedDict
 pp = pprint.PrettyPrinter(indent=4)
 
 def normalize_pathname(path):
-    path = path.replace("C:\\Users\\Michele\\Pictures\\", "")
-    path = path.replace("C:\\Users\\Michele\\PycharmProjects\\DupFinder\\static\\media\\pics\\", "")
+    path = path.replace("C:\\Users\\Maste\_My Stuff\\Pictures\\", "")
+    path = path.replace("C:\Users\Maste\_My Stuff\PycharmProjects\DupFinder\\static\\media\\pics\\", "")
     return path
 
 

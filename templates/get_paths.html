@@ -9,15 +9,47 @@
     Selected Directories for Comparison
 </h1>
 <h2>
-    {{ num_hashes_found }} duplicates found across {{ num_dirs_reviewed }}
+    Found {{ num_hashes_found }} duplicates across {{ num_dirs_reviewed }} directories reviewed.
 </h2>
 <div id="mydirtree" class="dirTree"></div>
 
 <script>
 <!--https://github.com/vakata/jstree/issues/1056-->
+<!--https://www.javascripting.com/view/jstree#populating-the-tree-using-ajax-and-lazy-loading-nodes-->
     $(function () {
-        var treeData = {{ jsonTreeData|tojson|safe }}
-        console.log(treeData);
+        $('#mydirtree').jstree({
+            'core': {
+                'data': {
+                    "url": "{{ url_for('get_a_dir', id=id) }}",
+                    "dataType" : "json",
+                    "data": function (node) {
+                            return { "id" : node.id };
+                    }
+                }
+            },
+            'checkbox': {'keep_selected_style': true},
+            'plugins': ['wholerow', 'checkbox']
+       });
+
+        <!--$('#mydirtree').jstree({-->
+            <!--'core': {-->
+                <!--'data': treeData,-->
+                <!--'themes': {'variant': 'large'}-->
+            <!--},-->
+            <!--'massload' : {-->
+                <!--'url' : "{{ url_for('get_more_dirs', id=id) }}",-->
+                <!--"data" : function (ids) {-->
+                            <!--console.log(ids);-->
+                            <!--return { "id" : ids.join(",") };-->
+                            <!--}-->
+                <!--},-->
+            <!--'checkbox': {-->
+                <!--'keep_selected_style': true-->
+            <!--},-->
+            <!--'plugins': ['wholerow', 'checkbox', 'massload']-->
+        <!--});-->
+        <!--var treeData = {{ jsonTreeData|tojson|safe }}-->
+        <!--console.log(treeData);-->
 
         <!--$('#tree').jstree({-->
             <!--'core' : {-->
@@ -36,24 +68,6 @@
             <!--},-->
             <!--plugins : ['massload']-->
         <!--});-->
-
-        $('#mydirtree').jstree({
-            'core': {
-                'data': treeData,
-                'themes': {'variant': 'large'}
-            },
-            'massload' : {
-                'url' : "{{ url_for('get_more_dirs', id=id) }}",
-                "data" : function (ids) {
-                            console.log(ids);
-                            return { "id" : ids.join(",") };
-                            }
-                },
-            'checkbox': {
-                'keep_selected_style': true
-            },
-            'plugins': ['wholerow', 'checkbox', 'massload']
-        });
 
         <!--$('#mydirtree').jstree({-->
             <!--&lt;!&ndash;'core': {&ndash;&gt;-->
