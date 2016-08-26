@@ -7,11 +7,6 @@ from collections import OrderedDict
 
 pp = pprint.PrettyPrinter(indent=4)
 
-def normalize_pathname(path):
-    path = path.replace("C:\\Users\\Maste\_My Stuff\\Pictures\\", "")
-    path = path.replace("C:\Users\Maste\_My Stuff\PycharmProjects\DupFinder\\static\\media\\pics\\", "")
-    return path
-
 
 class DataMinder(object):
     """
@@ -27,34 +22,59 @@ class DataMinder(object):
         self.by_hash_dir_file = {}
 
     def gen_spt_data(self):
+        """
+        Only called once by DupFinder.DataMinder#flash_entries
+        to compile statistics and persistent data structures
+        """
         self.by_dir_file = {}
         self.by_file_hash = {}
-        self.by_dir_file_groups = {}
         self.by_hash_files = {}
-        self.num_uniq_files = len(self.by_hash_dir_file)
-        self.num_dirs_reviewed = len(self.by_hash_dir_file.keys())
         for file_hash, v in self.by_hash_dir_file.iteritems():
             for dir_name, file_path_list in v.iteritems():
                 for file_path in file_path_list:
                     self.new_dir_file(dir_name=dir_name, file_path=file_path)
                     self.new_hash_file(file_hash=file_hash, file_path=file_path)
+                    self.new_file_hash(file_hash=file_hash, file_path=file_path)
+        self.num_uniq_files = len(self.by_hash_dir_file)
+        self.num_dirs_reviewed = len(self.by_dir_file)
 
     def new_dir_file(self, dir_name=None, file_path=None):
+        """
+        Only called once by DupFinder.DataMinder#gen_spt_data
+        Creates self.by_dir_file - a dict of all filepaths in a directory
+        """
         if dir_name not in self.by_dir_file.keys():
             self.by_dir_file[dir_name] = []
         try:
             self.by_dir_file[dir_name].append(file_path)
         except KeyError:
-            print "****"
+            print "****DupFinder.DataMinder#new_dir_file"
             pass
 
     def new_hash_file(self, file_hash=None, file_path=None):
+        """
+        Only called once by DupFinder.DataMinder#gen_spt_data
+        Creates self.by_hash_files - a dict of all filepaths by hash
+        """
         if file_hash not in self.by_hash_files.keys():
             self.by_hash_files[file_hash] = []
         try:
             self.by_hash_files[file_hash].append(file_path)
         except KeyError:
-            print "****"
+            print "**** DupFinder.DataMinder#new_hash_file"
+            pass
+
+    def new_file_hash(self, file_hash=None, file_path=None):
+        """
+        Only called once by DupFinder.DataMinder#gen_spt_data
+        Creates self.by_file_hash - a dict of hashes by file_path
+        """
+        if file_path not in self.by_file_hash.keys():
+            self.by_file_hash[file_path] = []
+        try:
+            self.by_file_hash[file_path].append(file_hash)
+        except KeyError:
+            print "**** DupFinder.DataMinder#new_file_hash"
             pass
 
     def create_entry(self, file_hash=None, dir_name=None, file_path=None):
@@ -72,8 +92,9 @@ class DataMinder(object):
         """
         {hash: {dir: [files]}}
         the following is necessary to strip out hashes that only contain one result
-        within a dir there should be > 1 files
+        within a dir, there should be > 1 files
         if a hash has > 1 dir then that too is a keeper
+        DupFinder.DataMinder#gen_spt_data is called to compile all statistics
         """
         tmp_dict = {out_k: {in_k: in_v for in_k, in_v in out_v.items()
                             if (len(out_v) == 1 and len(in_v) > 1) or len(out_v) > 1}
@@ -110,11 +131,14 @@ class DataMinder(object):
 
     
 class DupFinder(object):
-    def __init__(self, search_dir, dest_dir, local_root):
+    def __init__(self, acfg):
+        search_dir = acfg['SEARCH_SCOPE']
         print "Dup checking %s" % search_dir
         self.dm = DataMinder()
-        self.dest_dir = dest_dir
-        self.local_root = local_root
+        self.dest_dir = acfg['FINAL_RESTING_PLACE']
+        self.appl_root = acfg['APPL_ROOT']
+        self.pics_root = acfg['PICS_ROOT']
+        self.appl_pics_root = acfg['APPL_PICS_ROOT']
         self.num_files_moved = 0
         self.find_dup(search_dir)
         self.num_dirs_reviewed = 0
@@ -122,6 +146,10 @@ class DupFinder(object):
         self.num_files_confirmed = None
 
     def get_dirs_with_dups(self):
+        """
+        Called by the jQueryUI.DirTree.makeTree routine
+        :return: List of all directories containing duplicates
+        """
         return self.dm.get_dirs_with_dups()
 
     def find_dup(self, parent_folder):
@@ -140,21 +168,26 @@ class DupFinder(object):
                     if fext in img_types:
                         path = os.path.join(dname, filename)
                         file_hash = hashlib.md5(open(path, 'rb').read()).hexdigest()
-                        path = normalize_pathname(path)
-                        dir_name = normalize_pathname(dname)
+                        path = self.normalize_pics_root(path)
+                        dir_name = self.normalize_pics_root(dname)
                         self.dm.create_entry(file_hash=file_hash, dir_name=dir_name, file_path=path)
         self.dm.flash_entries()
+
+    def normalize_pics_root(self, path):
+        path = path.replace(self.pics_root + '\\', "")
+        path = path.replace(self.appl_pics_root + '\\', "")
+        return path
 
     def confirmer(self):
         results = []
         self.num_files_confirmed = 0
-        for dname, subdirs, fileList in os.walk(self.local_root + self.dest_dir):
+        for dname, subdirs, fileList in os.walk(self.appl_root + self.dest_dir):
             for filename in fileList:
                 self.num_files_confirmed += 1
                 path = os.path.join(dname, filename)
                 file_hash = hashlib.md5(open(path, 'rb').read()).hexdigest()
                 if file_hash not in self.dm.by_hash_files.keys():
-                    path = path.replace(self.local_root, '')
+                    path = path.replace(self.appl_root, '')
                     path = path.replace('\\', '/')
                     results.append([path, filename])
         return results
@@ -174,8 +207,11 @@ class DupFinder(object):
     def move_to_final_resting_place(self, files_to_move):
         self.num_files_moved = len(files_to_move)
         for old_filepath in files_to_move:
-            old_filepath = "{}/static/media/pics{}".format(self.local_root, old_filepath.replace('\\', '/'))
-            new_filepath = self.local_root + self.dest_dir + "/" + ntpath.basename(old_filepath)
+            old_filepath = "{}/static/media/pics{}".format(self.appl_root,
+                                                           old_filepath.replace(
+                                                               '\\', '/'))
+            new_filepath = self.appl_root + self.dest_dir + "/" + ntpath.basename(
+                old_filepath)
             try:
                 os.rename(old_filepath, new_filepath)
             except WindowsError:
@@ -189,7 +225,7 @@ if __name__ == '__main__':
     # search_scope = r"\_from Otto\_before pictures\1990's"
     # df = DupFinder(search_dir=r"C:\Users\Michele\Pictures" + search_scope,
     #                dest_dir='/static/media/pics/__delete these pictures, they are duplicates___',
-    #                local_root='C:/Users/Michele/PycharmProjects/DupFinder'
+    #                appl_root='C:/Users/Michele/PycharmProjects/DupFinder'
     #                )
     # df.get_dirs_with_dups()
 

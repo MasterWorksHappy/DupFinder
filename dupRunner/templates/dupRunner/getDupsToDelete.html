@@ -25,13 +25,13 @@
         $("button").click(function () {
             var pdirs = $('#mydirtree').jstree("get_selected")
             $.ajax({
-                url: "{{ url_for('move_the_files') }}",
+                url: "{{ url_for('dupRunner.move_the_files') }}",
                 data: JSON.stringify(pdirs),
                 contentType: "application/json",
                 type: "POST",
                 success: function (result) {
                     console.log(result);
-                    window.location.href = "{{ url_for('success') }}";
+                    window.location.href = "{{ url_for('dupRunner.success') }}";
                 },
                 error: function (error) {
                     console.log(error);

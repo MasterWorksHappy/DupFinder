@@ -10,8 +10,8 @@
     <link rel="icon" href="../static/ico/favicon.ico">
     <title>{{ page_title }}</title>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/2.2.3/jquery.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.1/jstree.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/2.2.4/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.2/jstree.min.js"></script>
 
     <!-- Latest compiled and minified CSS -->
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css"
@@ -26,9 +26,10 @@
             integrity="sha384-0mSbJDEHialfmuBBQP6A4Qrprq5OVfW37PRR3j5ELqxss1yVqOtnepnHVP9aJ7xS"
             crossorigin="anonymous"></script>
 
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.2.1/themes/default/style.min.css"/>
+    <link rel="stylesheet"
+          href="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.2/themes/default/style.min.css"/>
     <style>
-        <!--div#loading {-->
+/*        <!--div#loading {-->
             <!--top: 200 px;-->
             <!--margin: auto;-->
             <!--position: absolute;-->
@@ -37,7 +38,7 @@
             <!--height: 24px;-->
             <!--background: url(loading.gif) no-repeat;-->
             <!--cursor: wait;-->
-        <!--}-->
+        <!--}-->*/
 
         .dirTree {
             <!--display:inline-block;-->
@@ -71,17 +72,17 @@
     </style>
     <script type=text/javascript>
         $SCRIPT_ROOT = {{ request.script_root|tojson|safe }};
-        <!--function preloader(){-->
-            <!--document.getElementById("loading").style.display = "none";-->
-            <!--document.getElementById("content").style.display = "block";-->
-        <!--}-->
-        <!--window.onload = preloader;-->
+        // <!--function preloader(){-->
+        //     <!--document.getElementById("loading").style.display = "none";-->
+        //     <!--document.getElementById("content").style.display = "block";-->
+        // <!--}-->
+        // <!--window.onload = preloader;-->
 
     </script>
 </head>
 
 <body>
-<!--<div id="loading"></div>-->
+<!-- <div id="loading"></div> -->
 <div class="container-fluid">
     <nav class="navbar navbar-inverse navbar-fixed-top">
         <div class="container">
@@ -97,11 +98,11 @@
                 <a class="navbar-brand" href="#">Super Duper Finder!!</a>
             </div>
             <div id="navbar" class="collapse navbar-collapse">
-                {% from "macros.html" import nav_link with context %}
+                {% from "dupRunner/macros.html" import nav_link with context %}
                 <ul class="nav navbar-nav">
-                    {{ nav_link( 'get_dirs', 'Start') }}
-                    {{ nav_link( 'confirmer', 'Confirmer') }}
-                    {{ nav_link( 'about', 'About') }}
+                    {{ nav_link( 'dupRunner.get_a_dir', 'Start') }}
+                    {{ nav_link( 'dupRunner.confirmer', 'Confirmer') }}
+                    {{ nav_link( 'dupRunner.about', 'About') }}
                 </ul>
             </div><!--/.nav-collapse -->
         </div>
@@ -110,7 +111,7 @@
     <br>
     <br>
     <br>
-    <div id="loading"></div>
+    <!-- <div id="loading"></div> -->
     {% block content %}
     {% endblock %}
 

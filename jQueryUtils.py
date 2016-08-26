@@ -11,55 +11,94 @@ class jQTree(object):
 
 
 class DirTreeUI(jQTree):
-    def __init__(self, scope):
+    def __init__(self, acfg):
         """
         :param  scope: the dir where the dup search began
         """
         jQTree.__init__(self)
-        self.scope = "\\" + scope
+        # self.scope = "\\" + acfg['SEARCH_SCOPE']
+        scope = acfg['SEARCH_SCOPE']
+        self.scope = scope.replace(acfg['PICS_ROOT'] + '\\', '')
 
     def process_dup_dirs(self, dup_dirs):
         """
+        Only called from jQueryUtils.DirTreeUI#make_tree
         takes list of dirs from dup finder and splits them into parent and base
         to make an intermediary data structure
-        :param
-        :return: None, but loads dir_tree_list
-        dir_tree_list:  dirname, parent, base
+        :param: dup_dirs, list of dirs containing dups
+        :return: dir_tree_list:  dirname, parent, base
         """
         dir_tree_list = list()
-        parent, base = self.scope.rsplit('\\', 1)
-        dir_tree_list.append([self.scope, '#', base])
+        # parent, base = self.scope.rsplit('\\', 1)
+        # dir_tree_list.append([self.scope, '#', self.scope])
         for dirname in dup_dirs:
-            if any(e[0] != dirname for e in dir_tree_list):
-                parent, base = dirname.rsplit('\\', 1)
+            if len(dir_tree_list) == 0 or \
+                    any(e[0] != dirname for e in dir_tree_list):
+                if dirname.count('\\') > 0:
+                    parent, base = dirname.rsplit('\\', 1)
+                else:
+                    parent = dirname
+                    base = dirname
+                if parent == self.scope:
+                    parent = '#'
                 dir_tree_list.append([dirname, parent, base])
         return dir_tree_list
 
     def make_tree(self, dup_dirs):
         """
+        Only called from dupRunner init code
         writes dup dirs into a jQuery - jsTree list[dict{}] structure, used for display to the user
-        :param dup_dirs: a hierarchical dictionary of dup dirs
+        :param dup_dirs: a hierarchical dictionary of dup dirs; from DupFinder.get_dirs_with_dups
         :return: a jQuery tree: a list of dictionaries
+        'tree_data' : [
+               { "id" : "ajson1", "parent" : "#", "text" : "Simple root node" },
+               { "id" : "ajson2", "parent" : "#", "text" : "Root node 2" },
+               { "id" : "ajson3", "parent" : "ajson2", "text" : "Child 1" },
+               { "id" : "ajson4", "parent" : "ajson2", "text" : "Child 2" },
+            ]
+        'Streamer_dict' : dict of children keyed by parent
         """
         tree_list = list()
         streamer_dict = dict()
         for row in self.process_dup_dirs(dup_dirs):
             dirname, parent, base = row
-            node_dict = {
-                'id': dirname,
-                'parent': parent,
-                'text': base,
-                'state': {
-                    'opened': True,
-                    'selected': False
-                }
-            }
-            tree_list.append(node_dict)
+            node_dict = self.make_dict_node(base, dirname, parent)
             if parent not in streamer_dict:
                 streamer_dict[parent] = []
+                # node_dict['children'] = True
+            tree_list.append(node_dict)
             streamer_dict[parent].append(node_dict)
         self.tree_list = tree_list
-        self.tree_dict = streamer_dict
+        self.tree_dict = self.ck_for_kids(streamer_dict)
+        print "jQueryUtils.DirTreeUI#make_tree: streamer_dict:\n", pp.pprint(
+            streamer_dict)
+        print "jQueryUtils.DirTreeUI#make_tree: tree_list:\n", pp.pprint(
+            tree_list)
+
+    def ck_for_kids(self, sdict):
+        """
+        review sdict for parents with children, set 'children' to True, if yes
+        :param sdict: dict of children by parent
+        :return:
+        """
+        for k, v in sdict.iteritems():
+            for d in v:
+                if d['id'] in sdict.keys():
+                    d['children'] = True
+        return sdict
+
+    def make_dict_node(self, base, dirname, parent):
+        node_dict = {}
+        node_dict = {
+            'id': dirname,
+            'parent': parent,
+            'text': base  # ,
+            # 'state': {
+            #     'opened': True,
+            #     'selected': False
+            # }
+        }
+        return node_dict
 
     def get_tree_list(self):
         return self.tree_list
@@ -69,7 +108,8 @@ class DirTreeUI(jQTree):
 
     def get_tree_branch_dict(self, dir_id):
         x = self.tree_dict[dir_id]
-        print "get_tree_branch_dict[", dir_id, "]:\n", pp.pprint(x)
+        print "jQueryUtils.DirTreeUI#get_tree_branch_dict[", dir_id, "]:\n", pp.pprint(
+            x)
         return x
 
     def get_tree_branches(self, dir_ids):
@@ -84,7 +124,7 @@ def reset_web_prefix(url):
     add web prefix 'static' to path for image display by server
     C:\Users\Michele\PycharmProjects\DupFinder\static\media\pics
     """
-    url = "\\static\\media\\pics" + url
+    url = "\\static\\media\\pics\\" + url  # TODO make setable config var
     url = url.replace('\\', '/')
     return url
 
