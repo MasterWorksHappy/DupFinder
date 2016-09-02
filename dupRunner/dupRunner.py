@@ -40,7 +40,7 @@ dupRunner = Blueprint('dupRunner', __name__,
 
 pp = pprint.PrettyPrinter(indent=4)
 cfg = ConfigParser.ConfigParser()
-cfg.read('DupFinder.ini')
+cfg.read('DupDestroyer.ini')
 
 FINAL_RESTING_PLACE = cfg.get('Pics', 'trash')
 SEARCH_SCOPE = cfg.get('Pics', 'scope')
@@ -165,6 +165,7 @@ def get_a_dir(id=None):
 @dupRunner.route("/get_paths", methods=['POST'])
 def get_paths():
     """
+        Called when the user presses the submit button on the dir select screen
         Parses the json data for the img dir indexes selected by the user
     """
     img_dirs = request.get_json()
@@ -195,13 +196,13 @@ def show_me_the_money():
 
 
 @dupRunner.route('/get_pic')
-def get_dir():
-    rq_id = request.args.get('id', '', type=str)
+def get_pic():
+    pic_id = request.args.get('id', '', type=str)
     logger.debug(log_msg(
         method=request.method,
         route=request.path,
-        rq_id=rq_id))
-    return jsonify(img_tree.get_tree_branch_dict(rq_id))
+        rq_id=pic_id))
+    return jsonify(img_tree.get_tree_branch_dict(pic_id))
 
 
 # @dupRunner.route("/show_me_the_money")

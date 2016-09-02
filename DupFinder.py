@@ -1,10 +1,11 @@
 import hashlib
 import logging
+import pprint
+from collections import OrderedDict
+
 import ntpath
 import os
 import os.path
-import pprint
-from collections import OrderedDict
 
 pp = pprint.PrettyPrinter(indent=4)
 
@@ -34,7 +35,7 @@ class DataMinder(object):
 
     def gen_spt_data(self):
         """
-        Only called once by DupFinder.DataMinder#flash_entries
+        Only called once by DupDestroyer.DataMinder#flash_entries
         to compile statistics and persistent data structures
         """
         self.by_dir_file = {}
@@ -51,7 +52,7 @@ class DataMinder(object):
 
     def new_dir_file(self, dir_name=None, file_path=None):
         """
-        Only called once by DupFinder.DataMinder#gen_spt_data
+        Only called once by DupDestroyer.DataMinder#gen_spt_data
         Creates self.by_dir_file - a dict of all filepaths in a directory
         """
         if dir_name not in self.by_dir_file.keys():
@@ -67,7 +68,7 @@ class DataMinder(object):
 
     def new_hash_file(self, file_hash=None, file_path=None):
         """
-        Only called once by DupFinder.DataMinder#gen_spt_data
+        Only called once by DupDestroyer.DataMinder#gen_spt_data
         Creates self.by_hash_files - a dict of all filepaths by hash
         """
         if file_hash not in self.by_hash_files.keys():
@@ -83,7 +84,7 @@ class DataMinder(object):
 
     def new_file_hash(self, file_hash=None, file_path=None):
         """
-        Only called once by DupFinder.DataMinder#gen_spt_data
+        Only called once by DupDestroyer.DataMinder#gen_spt_data
         Creates self.by_file_hash - a dict of hashes by file_path
         """
         try:
@@ -120,7 +121,7 @@ class DataMinder(object):
         the following is necessary to strip out hashes that only contain one result
         within a dir, there should be > 1 files
         if a hash has > 1 dir then that too is a keeper
-        DupFinder.DataMinder#gen_spt_data is called to compile all statistics
+        DupDestroyer.DataMinder#gen_spt_data is called to compile all statistics
         """
         tmp_dict = {out_k: {in_k: in_v for in_k, in_v in out_v.items()
                             if (len(out_v) == 1 and len(in_v) > 1) or len(out_v) > 1}
@@ -273,9 +274,9 @@ class DupFinder(object):
 
 if __name__ == '__main__':
     # search_scope = r"\_from Otto\_before pictures\1990's"
-    # df = DupFinder(search_dir=r"C:\Users\Michele\Pictures" + search_scope,
+    # df = DupDestroyer(search_dir=r"C:\Users\Michele\Pictures" + search_scope,
     #                dest_dir='/static/media/pics/__delete these pictures, they are duplicates___',
-    #                appl_root='C:/Users/Michele/PycharmProjects/DupFinder'
+    #                appl_root='C:/Users/Michele/PycharmProjects/DupDestroyer'
     #                )
     # df.get_dirs_with_dups()
 

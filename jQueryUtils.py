@@ -58,7 +58,7 @@ class DirTreeUI(jQTree):
         """
         Only called from dupRunner init code
         writes dup dirs into a jQuery - jsTree list[dict{}] structure, used for display to the user
-        :param dup_dirs: a hierarchical dictionary of dup dirs; from DupFinder.get_dirs_with_dups
+        :param dup_dirs: a hierarchical dictionary of dup dirs; from DupDestroyer.get_dirs_with_dups
         :return: a jQuery tree: a list of dictionaries
         'tree_data' : [
                { "id" : "ajson1", "parent" : "#", "text" : "Simple root node" },
@@ -75,7 +75,6 @@ class DirTreeUI(jQTree):
             node_dict = self.make_dict_node(base, dirname, parent)
             if parent not in streamer_dict:
                 streamer_dict[parent] = []
-                # node_dict['children'] = True
             tree_list.append(node_dict)
             streamer_dict[parent].append(node_dict)
         self.tree_list = tree_list
@@ -87,8 +86,7 @@ class DirTreeUI(jQTree):
     def ck_for_kids(self, sdict):
         """
         review sdict for parents with children, set 'children' to True, if yes
-        :param sdict: dict of children by parent
-        :return:
+        sdict: dict of children by parent
         """
         for k, v in sdict.iteritems():
             for d in v:
@@ -97,23 +95,12 @@ class DirTreeUI(jQTree):
         return sdict
 
     def make_dict_node(self, base, dirname, parent):
-        node_dict = {}
         node_dict = {
             'id': dirname,
             'parent': parent,
-            'text': base  # ,
-            # 'state': {
-            #     'opened': True,
-            #     'selected': False
-            # }
+            'text': base
         }
         return node_dict
-
-    def get_tree_list(self):
-        return self.tree_list
-
-    def get_tree_dict(self):
-        return self.tree_dict
 
     def get_tree_branch_dict(self, dir_id):
         x = self.tree_dict[dir_id]
@@ -121,12 +108,6 @@ class DirTreeUI(jQTree):
             dir_id=dir_id,
             tree_dict=x))
         return x
-
-    def get_tree_branches(self, dir_ids):
-        bouquet = {}
-        for dir_id in dir_ids:
-            bouquet.update(self.tree_dict[dir_id])
-        return bouquet
 
 
 def reset_web_prefix(url):
@@ -155,7 +136,6 @@ def process_img_urls(img_urls=None):
     :return:
         # osLeafPath, osLeafPath of parent, text/display item, state dict entry
     """
-    # print "img_urls:\n", pp.pprint(img_urls)
     img_list = list()
     parent_id = 0
     img_list.append([parent_id, '#', parent_id, True])  # empty root level rec
@@ -172,33 +152,40 @@ def process_img_urls(img_urls=None):
 class ImgTreeUI(jQTree):
     def __init__(self):
         jQTree.__init__(self)
+        self.tree_dict = dict()
+        self.tree_list = list()
 
     def make(self, img_urls):
         """
-        writes dup imgs into a jQuery - jsTree list[dict{}] structure, used for display to the user
-        :param img_urls: a list of lists of dup imgs, grouped by hashes
-        :return: a jQuery tree: a list of dictionaries
+        writes dup imgs into a jQuery - jsTree list[dict{}] structure,
+        used for display to the user
+        img_urls: a list of lists of dup imgs, grouped by hashes
+        a jQuery tree: a list of dictionaries
+        'tree_dict' : dict of children keyed by parent
         """
-        img_list = list()
         for row in process_img_urls(img_urls=img_urls):
-            # osLeafPath, osLeafPath of parent, text/display item, state dict entry
             url, parent_url, display_item, state = row
-            row = {
+            row_dict = {
                 'id': url,
                 'parent': parent_url,
                 'text': display_item,
                 'icon': False
             }
             if state:
-                row['state'] = {
-                    'opened': True,
-                    'selected': False
-                }
-            img_list.append(row)
-        if len(img_list) == 1:  # only contains header, reset to null
-            img_list = list()
-        self.tree_list = img_list
-        # print "img_list:\n", pp.pprint(img_list)
+                row_dict['children'] = True
+            self.tree_list.append(row_dict)
+            if parent_url not in self.tree_dict:
+                self.tree_dict[parent_url] = []
+            self.tree_dict[parent_url].append(row_dict)
+        if len(self.tree_list) == 1:  # only contains header, reset to null
+            self.tree_list = list()
+
+    def get_tree_branch_dict(self, pic_id):
+        x = self.tree_dict[pic_id]
+        logger.debug(log_msg(
+            pic_id=pic_id,
+            tree_dict=x))
+        return x
 
 
 if __name__ == '__main__':

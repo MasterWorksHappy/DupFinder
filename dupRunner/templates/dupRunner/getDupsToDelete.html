@@ -11,21 +11,10 @@
 
 <script>
     $(function () {
-    //     var treeData = {{ jsonTreeData|tojson|safe }}
-    //     $('#mydirtree').jstree({
-    //         'core': {
-    //             'data': treeData,
-    //             'themes': {'variant': 'large'}
-    //         },
-    //         'checkbox': {
-    //             'keep_selected_style': true
-    //         },
-    //         'plugins': ['checkbox']
-    //     });
         $('#mydirtree').jstree({
             'core': {
                 'data': {
-                    "url": "{{ url_for('dupRunner.get_dir') }}",
+                    "url": "{{ url_for('dupRunner.get_pic') }}",
                     "dataType" : "json",
                     "data": function (node) {
                         return { "id" : node.id };

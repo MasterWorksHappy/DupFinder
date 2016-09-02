@@ -7,6 +7,7 @@ from flask import Flask
 
 from dupRunner.dupRunner import dupRunner
 
+
 def create_app(debug=False):
     app = Flask(__name__)
     app.debug = debug
@@ -15,7 +16,7 @@ def create_app(debug=False):
 
 
 def log_stuff():
-    fileConfig('DupFinder.ini')
+    fileConfig('DupDestroyer.ini')
     logger = logging.getLogger('dupDestroyer')
     # logging.getLogger().addHandler(logging.NullHandler())
 
