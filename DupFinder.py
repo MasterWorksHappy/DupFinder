@@ -1,4 +1,5 @@
 import hashlib
+import logging
 import ntpath
 import os
 import os.path
@@ -7,6 +8,16 @@ from collections import OrderedDict
 
 pp = pprint.PrettyPrinter(indent=4)
 
+logger = logging.getLogger('dupDestroyer')
+
+
+def log_msg(**kwargs):
+    msg = "\n\t\t"
+    for k, v in kwargs.iteritems():
+        if isinstance(v, dict) or isinstance(v, list):
+            v = "\n" + pp.pformat(v)
+        msg += '%s: >%s<, ' % (k, v)
+    return msg
 
 class DataMinder(object):
     """
@@ -48,7 +59,10 @@ class DataMinder(object):
         try:
             self.by_dir_file[dir_name].append(file_path)
         except KeyError:
-            print "****DupFinder.DataMinder#new_dir_file"
+            logger.error(log_msg(
+                dir_name_k=dir_name,
+                file_path_v=file_path,
+                err_msg='Unable to append path to dir'))
             pass
 
     def new_hash_file(self, file_hash=None, file_path=None):
@@ -61,7 +75,10 @@ class DataMinder(object):
         try:
             self.by_hash_files[file_hash].append(file_path)
         except KeyError:
-            print "**** DupFinder.DataMinder#new_hash_file"
+            logger.error(log_msg(
+                file_hash_k=file_hash,
+                file_path_v=file_path,
+                err_msg='Unable to append path to hash'))
             pass
 
     def new_file_hash(self, file_hash=None, file_path=None):
@@ -69,15 +86,20 @@ class DataMinder(object):
         Only called once by DupFinder.DataMinder#gen_spt_data
         Creates self.by_file_hash - a dict of hashes by file_path
         """
-        if file_path not in self.by_file_hash.keys():
-            self.by_file_hash[file_path] = []
         try:
-            self.by_file_hash[file_path].append(file_hash)
+            self.by_file_hash[file_path] = file_hash
         except KeyError:
-            print "**** DupFinder.DataMinder#new_file_hash"
+            logger.error(log_msg(
+                file_path_k=file_path,
+                file_hash_v=file_hash,
+                err_msg='Unable to append hash to path'))
             pass
 
     def create_entry(self, file_hash=None, dir_name=None, file_path=None):
+        """
+            Creates the by_hash_dir_file which is a dict - dict - list.
+            self.by_hash_dir_file[file_hash][dir_name] = list(file_path)s
+        """
         if file_hash not in self.by_hash_dir_file.keys():
             self.by_hash_dir_file[file_hash] = {}
         if dir_name not in self.by_hash_dir_file[file_hash]:
@@ -85,7 +107,11 @@ class DataMinder(object):
         try:
             self.by_hash_dir_file[file_hash][dir_name].append(file_path)
         except KeyError:
-            print "****"
+            logger.error(log_msg(
+                file_hash_k1=file_hash,
+                dir_name_k2=dir_name,
+                file_path_v=file_path,
+                err_msg='Unable to append path to hash/dir'))
             pass
 
     def flash_entries(self):
@@ -104,24 +130,27 @@ class DataMinder(object):
         """
         self.by_hash_dir_file = {k: v for k, v in tmp_dict.iteritems() if len(v) > 0}
         self.gen_spt_data()
-        # print "by_hash_dir_file:\n", pp.pprint(self.by_hash_dir_file)
 
     def get_files_byhash(self, dir_list=None):
         files_byhash = {}
         tmp_dict = {}
         for dir_name in dir_list:
             dir_name = str(dir_name)
-            tmp_dict = {k: v for k, v in self.by_hash_files.iteritems() if any(dir_name in s for s in v)}
+            tmp_dict = {k: v for k, v in self.by_hash_files.iteritems()
+                        if any(dir_name in s for s in v)}
             files_byhash.update(tmp_dict)
         OrderedDict(sorted(files_byhash.items(), key=lambda t: len(t[1])))
         return files_byhash
 
     def del_by_list_of_files(self, files_to_move=None):
+        """
+            this updates the list in memory and all dependent data structures
+        """
         for file_path in files_to_move:
             file_hash = self.by_file_hash[file_path]
-            for dir_name, file_list in self.by_hash_dir_file[file_hash].items():
-                if file_path in file_list:
-                    self.by_hash_dir_file[file_hash][dir_name].remove(file_path)
+            dir_name = ntpath.dirname(file_path)
+            if file_path in self.by_hash_dir_file[file_hash][dir_name]:
+                self.by_hash_dir_file[file_hash][dir_name].remove(file_path)
         self.flash_entries()
 
     def get_dirs_with_dups(self):
@@ -133,7 +162,6 @@ class DataMinder(object):
 class DupFinder(object):
     def __init__(self, acfg):
         search_dir = acfg['SEARCH_SCOPE']
-        print "Dup checking %s" % search_dir
         self.dm = DataMinder()
         self.dest_dir = acfg['FINAL_RESTING_PLACE']
         self.appl_root = acfg['APPL_ROOT']
@@ -181,7 +209,7 @@ class DupFinder(object):
     def confirmer(self):
         results = []
         self.num_files_confirmed = 0
-        for dname, subdirs, fileList in os.walk(self.appl_root + self.dest_dir):
+        for dname, subdirs, fileList in os.walk(self.dest_dir):
             for filename in fileList:
                 self.num_files_confirmed += 1
                 path = os.path.join(dname, filename)
@@ -204,22 +232,44 @@ class DupFinder(object):
         self.num_img_dups = len(img_urls)
         return img_urls
 
-    def move_to_final_resting_place(self, files_to_move):
-        self.num_files_moved = len(files_to_move)
-        for old_filepath in files_to_move:
-            old_filepath = "{}/static/media/pics{}".format(self.appl_root,
-                                                           old_filepath.replace(
-                                                               '\\', '/'))
-            new_filepath = self.appl_root + self.dest_dir + "/" + ntpath.basename(
-                old_filepath)
+    def move_to_final_resting_place(self, pics_to_move):
+        """
+        A list of files are passed in but they are the displayed client values.
+        The old path name and the new path name need to be constructed
+        from the names passed in.
+
+        pic_to_move:
+        _from Otto\\_before pictures\\1990's\\1993\\19930115 - 09 - Copy.jpg
+
+        old_pic_loc:
+        acfg['APPL_PICS_ROOT'] \ pic_to_move
+        C:\Users\Maste\_My Stuff\PycharmProjects\DupFinder\static\media\pics\
+            _from Otto\_before pictures\1990's\1993\19930115 - 09 - Copy.jpg
+
+        new_pic_loc:
+        C:\Users\Maste\_My Stuff\PycharmProjects\DupFinder\static\media\pics\
+            __delete these pictures, they are duplicates___\
+           19930115 - 09 - Copy.jpg
+
+        """
+        self.num_files_moved = len(pics_to_move)
+        for pic_to_move in pics_to_move:
+            pic_to_move = pic_to_move.replace('\\', '/')
+            old_pic_loc = "{}\{}".format(self.appl_pics_root, pic_to_move)
+            new_pic_loc = "{}\{}".format(self.dest_dir, ntpath.basename(
+                pic_to_move))
             try:
-                os.rename(old_filepath, new_filepath)
+                os.rename(old_pic_loc, new_pic_loc)
             except WindowsError:
-                base, ext = os.path.splitext(new_filepath)
-                print base + '_' + ext
-                os.rename(new_filepath, base + '_' + ext)
-                os.rename(old_filepath, new_filepath)
-        self.dm.del_by_list_of_files(files_to_move)
+                logger.error(log_msg(
+                    pic_to_move=pic_to_move,
+                    old_pic_loc=old_pic_loc,
+                    new_pic_loc=new_pic_loc,
+                    err_msg='Problem renaming old to new filename'))
+                base, ext = os.path.splitext(new_pic_loc)
+                os.rename(new_pic_loc, base + '_' + ext)
+                os.rename(old_pic_loc, new_pic_loc)
+        self.dm.del_by_list_of_files(pics_to_move)
 
 if __name__ == '__main__':
     # search_scope = r"\_from Otto\_before pictures\1990's"
@@ -241,10 +291,10 @@ if __name__ == '__main__':
     # print "dedups ({}):\n".format(len(df.dedups))
     # pp.pprint(df.dedups)
     #
-    # files_to_move = [ "_from Otto\\_before pictures\\1990's\\1995\\1995 0301 08.jpg",
+            # pics_to_move = [ "_from Otto\\_before pictures\\1990's\\1995\\1995 0301 08.jpg",
     #                   "_from Otto\\_before pictures\\1990's\\1993\\19930115 - 11.jpg",
     #                   "_from Otto\\_before pictures\\1990's\\1993\\199304 - Becky & Gina - Copy.jpg"]
-    # df.del_dedup_entry(files_to_move)
+            # df.del_dedup_entry(pics_to_move)
 
     # dups = df.dups
     # print "Dups type/len : ", type(dups), "/", len(dups)

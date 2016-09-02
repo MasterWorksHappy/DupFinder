@@ -1,4 +1,4 @@
-{% extends "base2.html" %}
+{% extends "dupRunner/base2.html" %}
 {% block content %}
 <h1>
     <button name="submit" type="submit" class="btn btn-default">Submit</button>
@@ -11,16 +11,29 @@
 
 <script>
     $(function () {
-        var treeData = {{ jsonTreeData|tojson|safe }}
+    //     var treeData = {{ jsonTreeData|tojson|safe }}
+    //     $('#mydirtree').jstree({
+    //         'core': {
+    //             'data': treeData,
+    //             'themes': {'variant': 'large'}
+    //         },
+    //         'checkbox': {
+    //             'keep_selected_style': true
+    //         },
+    //         'plugins': ['checkbox']
+    //     });
         $('#mydirtree').jstree({
             'core': {
-                'data': treeData,
-                'themes': {'variant': 'large'}
+                'data': {
+                    "url": "{{ url_for('dupRunner.get_dir') }}",
+                    "dataType" : "json",
+                    "data": function (node) {
+                        return { "id" : node.id };
+                    }
+                }
             },
-            'checkbox': {
-                'keep_selected_style': true
-            },
-            'plugins': ['checkbox']
+            'checkbox': {'keep_selected_style': true},
+            'plugins': ['wholerow', 'checkbox']
         });
         $("button").click(function () {
             var pdirs = $('#mydirtree').jstree("get_selected")

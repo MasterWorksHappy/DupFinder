@@ -8,48 +8,31 @@
     Found {{ num_hashes_found }} duplicates across {{ num_dirs_reviewed }}
     directories reviewed.
 </h2>
-<div id="mydirtree" class="dirTree"></div>
+<div id='mydirtree' class='dirTree'></div>
 
-<script>
-
-    $(function () {
-        $('#mydirtree')
-        .jstree({
+<script type="text/javascript">
+    $(function() {
+        $('#mydirtree').jstree({
             'core': {
                 'data': {
+                    "url": "{{ url_for('dupRunner.get_dir') }}",
                     "dataType" : "json",
-                    "contentType": "application/json",
-                    "type": "POST",
-                    'url': "{{ url_for('dupRunner.get_a_dir') }}",
-                    'data' : function (node) {
-                        return node.id ;
+                    "data": function (node) {
+                            return { "id" : node.id };
                     }
-                },
-            },
-            'checkbox': {
-                'keep_selected_style': true,
-                'undetermined' : true
-            },
-            'plugins': ['checkbox'],
-            'success': function(result) {
-                console.log(result);
-                window.location.href = "{{ url_for('dupRunner.get_a_dir') }}";
-            },
-            'error':
-                function (jqXHR, textStatus, errorThrown) {
-                    $('#mydirtree').html("<h3>Tree loading error.</h3><p>" + jqXHR.responseText + "</p>"
-                        );
                 }
-            }
-        );
+            },
+            'checkbox': {'keep_selected_style': true},
+            'plugins': ['wholerow', 'checkbox']
+       });
 
-        $('#mydirtree').on("changed.jstree", function (e, data) {
+        $("#mydirtree").on("changed.jstree", function (e, data) {
             console.log("The selected nodes are:");
             console.log(data.selected);
         });
 
         $("#submit").click(function () {
-            var pdirs = $('#mydirtree').jstree("get_selected")
+            var pdirs = $("#mydirtree").jstree("get_selected")
             $.ajax({
                 url: "{{ url_for('dupRunner.get_paths') }}",
                 data: JSON.stringify(pdirs),
@@ -65,7 +48,6 @@
             });
         });
     });
-
 
 </script>
 {% endblock %}

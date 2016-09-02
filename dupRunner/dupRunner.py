@@ -1,4 +1,5 @@
 import ConfigParser
+import logging
 import pprint
 import urllib
 
@@ -43,21 +44,31 @@ cfg.read('DupFinder.ini')
 
 FINAL_RESTING_PLACE = cfg.get('Pics', 'trash')
 SEARCH_SCOPE = cfg.get('Pics', 'scope')
-PICS_ROOT = cfg.get('Pics', 'root')
-APPL_ROOT = cfg.get('Appl', 'root')
-APPL_PICS_ROOT = cfg.get('Appl', 'pics_root')
+PICS_ROOT = cfg.get('Pics', 'proot')
+APPL_ROOT = cfg.get('Appl', 'aroot')
+APPL_PICS_ROOT = cfg.get('Appl', 'aproot')
 app = Flask(__name__)
 app.config.from_object(__name__)
 
+logger = logging.getLogger('dupDestroyer')
+
+
+def log_msg(**kwargs):
+    msg = "\n\t\t"
+    for k, v in kwargs.iteritems():
+        if isinstance(v, dict) or isinstance(v, list):
+            v = "\n" + pp.pformat(v)
+        msg += '%s: >%s<, ' % (k, v)
+    return msg
+
+
+logger.debug(log_msg(
+    search_scope=SEARCH_SCOPE,
+    msg='Dir being checked for dups'))
 dup_finder = DupFinder(app.config)
 dir_tree = DirTreeUI(app.config)
 img_tree = ImgTreeUI()
 dir_tree.make_tree(dup_finder.dm.get_dirs_with_dups())
-
-
-def bread_crumbs(**kwargs):
-    for k, v in kwargs.iteritems():
-        print "*****", k, ": ", pp.pprint(v)
 
 
 @dupRunner.route("/")
@@ -65,9 +76,8 @@ def get_dirs():
     """
         Displays to the user image dirs containing dups for selection
     """
-    bread_crumbs(
-        caller='dupRunner.get_dirs',
-        method=request.method)
+    logger.debug(log_msg(
+        method=request.method))
     return render_template(
         'dupRunner/get_paths.html',
         num_hashes_found=dup_finder.dm.num_uniq_files,
@@ -76,41 +86,66 @@ def get_dirs():
     )
 
 
+@dupRunner.route('/an')
+# def get_dirs():
+def index():
+    return render_template('dupRunner/index.html')
+
+
+@dupRunner.route('/_add_numbers')
+def add_numbers():
+    a = request.args.get('a', 0, type=int)
+    b = request.args.get('b', 0, type=int)
+    return jsonify(result=a + b)
+
+
+@dupRunner.route('/get_dir')
+def get_dir():
+    rq_id = request.args.get('id', '', type=str)
+    logger.debug(log_msg(
+        method=request.method,
+        route=request.path,
+        rq_id=rq_id))
+    return jsonify(dir_tree.get_tree_branch_dict(rq_id))
+
+
 @dupRunner.route('/get_a_dir', defaults={'id': ''}, methods=['GET', 'POST'])
 @dupRunner.route('/get_a_dir/<path:id>', methods=['POST'])
-@dupRunner.route('/get_a_dir', methods=['POST'])
+# @dupRunner.route('/get_a_dir', methods=['POST'])
 def get_a_dir(id=None):
     """
         Displays to the user an image dir containing dups for selection
     """
-    # parent_id = request.args.get('id', '#', type=str)
-
-    # TODO fix endpoint params
-
-    print 'id >%s<' % id
-    parent_id = '#'
+    # rq_id = request.args.get('id', '#', type=str)
+    rq_id = request.args.get('id', type=str)
     if id:
         parent_id = str(urllib.unquote(id))
-        print ">%s<" % parent_id
-        if parent_id == "'\\''":
-            parent_id = '#'
-    bread_crumbs(
-        caller='dupRunner.get_a_dir',
+    elif rq_id:
+        parent_id = str(urllib.unquote(rq_id))
+    else:
+        parent_id = '#'
+    if parent_id == "'\\''":
+        parent_id = '#'
+    logger.debug(log_msg(
         method=request.method,
-        parent_id=parent_id)
+        route=request.path,
+        rq_id=rq_id,
+        id=id,
+        parent_id=parent_id))
     if request.method == 'POST':
         if parent_id is '#':
             return jsonify(dir_tree.get_tree_branch_dict('#'))
         else:
             return redirect(url_for('dupRunner.get_a_dir'))
-    else:
-        return render_template(
-            'dupRunner.get_paths.html',
-            num_hashes_found=dup_finder.dm.num_uniq_files,
-            num_dirs_reviewed=dup_finder.dm.num_dirs_reviewed,
-            page_title='Select Directories',
-            jsonTreeData=dir_tree.get_tree_branch_dict(parent_id)
-        )
+    else:  # it is a GET
+        return jsonify(dir_tree.get_tree_branch_dict(parent_id))
+        # return render_template(
+        #     'dupRunner/get_paths.html',
+        #     num_hashes_found=dup_finder.dm.num_uniq_files,
+        #     num_dirs_reviewed=dup_finder.dm.num_dirs_reviewed,
+        #     page_title='Select Directories',
+        #     jsonTreeData=dir_tree.get_tree_branch_dict(parent_id)
+        # )
 
 
 # @dupRunner.route("/get_more_dirs/<id>", methods=['GET', 'POST'])
@@ -133,10 +168,10 @@ def get_paths():
         Parses the json data for the img dir indexes selected by the user
     """
     img_dirs = request.get_json()
-    bread_crumbs(
+    logger.debug(log_msg(
         caller='dupRunner.get_paths',
         method=request.method,
-        img_dirs=img_dirs)
+        img_dirs=img_dirs))
     if request.method == 'POST':
         img_tree.make(dup_finder.get_img_urls(img_dirs))
         return redirect(url_for('dupRunner.show_me_the_money'))
@@ -148,21 +183,48 @@ def show_me_the_money():
         Executes the duplicate finder on the list of img dirs
         selected by the user.  Displays the dups to the user.
     """
-    bread_crumbs(
+    logger.debug(log_msg(
         caller='dupRunner.show_me_the_money',
         method=request.method,
-        img_tree_tree_list=img_tree.tree_list)
-    if len(img_tree.tree_list) == 0:  # no dups found
-        return render_template(
-            'dupRunner.Good Job.html',
-            page_title='Good Job!')
-    else:  # img_tree.tree_results ready to be displayed
-        return render_template(
-            'dupRunner.getDupsToDelete.html',
-            page_title='Results',
-            num_dirs_searched=dup_finder.num_dirs_reviewed,
-            num_dups_found=dup_finder.num_img_dups,
-            jsonTreeData=img_tree.tree_list)
+        img_tree_tree_list=img_tree.tree_list))
+    return render_template(
+        'dupRunner/getDupsToDelete.html',
+        page_title='Results',
+        num_dirs_searched=dup_finder.num_dirs_reviewed,
+        num_dups_found=dup_finder.num_img_dups)
+
+
+@dupRunner.route('/get_pic')
+def get_dir():
+    rq_id = request.args.get('id', '', type=str)
+    logger.debug(log_msg(
+        method=request.method,
+        route=request.path,
+        rq_id=rq_id))
+    return jsonify(img_tree.get_tree_branch_dict(rq_id))
+
+
+# @dupRunner.route("/show_me_the_money")
+# def show_me_the_money():
+#     """
+#         Executes the duplicate finder on the list of img dirs
+#         selected by the user.  Displays the dups to the user.
+#     """
+#     logger.debug(log_msg(
+#         caller='dupRunner.show_me_the_money',
+#         method=request.method,
+#         img_tree_tree_list=img_tree.tree_list))
+#     if len(img_tree.tree_list) == 0:  # no dups found
+#         return render_template(
+#             'dupRunner/Good Job.html',
+#             page_title='Good Job!')
+#     else:  # img_tree.tree_results ready to be displayed
+#         return render_template(
+#             'dupRunner/getDupsToDelete.html',
+#             page_title='Results',
+#             num_dirs_searched=dup_finder.num_dirs_reviewed,
+#             num_dups_found=dup_finder.num_img_dups,
+#             jsonTreeData=img_tree.tree_list)
 
 
 @dupRunner.route("/moveTheFiles", methods=['POST'])
@@ -173,10 +235,10 @@ def move_the_files():
         PARAM : a list of files to be moved
     """
     dup_files = request.get_json()
-    bread_crumbs(
+    logger.debug(log_msg(
         caller='dupRunner.move_the_files',
         method=request.method,
-        dup_files=dup_files)
+        dup_files=dup_files))
     if request.method == 'POST':
         dup_finder.move_to_final_resting_place(dup_files)
         return redirect(url_for('dupRunner.success'))
@@ -186,11 +248,11 @@ def move_the_files():
 def success():
     """
     """
-    bread_crumbs(
+    logger.debug(log_msg(
         caller='dupRunner.success',
-        method=request.method)
+        method=request.method))
     return render_template(
-        'dupRunner.success.html',
+        'dupRunner/success.html',
         page_title='Success',
         num_moved=dup_finder.num_files_moved,
         dup_dir=app.config['FINAL_RESTING_PLACE'])
@@ -200,11 +262,11 @@ def success():
 def confirmer():
     """
     """
-    bread_crumbs(
+    logger.debug(log_msg(
         caller='dupRunner.confirmer',
-        method=request.method)
+        method=request.method))
     return render_template(
-        'dupRunner.confirmer.html',
+        'dupRunner/confirmer.html',
         issues=dup_finder.confirmer(),
         num_reviewed=dup_finder.num_files_confirmed,
         page_title='Confirmer')
@@ -214,11 +276,11 @@ def confirmer():
 def about():
     """
     """
-    bread_crumbs(
+    logger.debug(log_msg(
         caller='dupRunner.about',
-        method=request.method)
+        method=request.method))
     return render_template(
-        'dupRunner.about.html',
+        'dupRunner/about.html',
         page_title='About')
 
 

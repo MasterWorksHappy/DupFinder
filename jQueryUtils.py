@@ -1,11 +1,21 @@
+import logging
 import pprint
 
 pp = pprint.PrettyPrinter(indent=4)
 
+logger = logging.getLogger('dupDestroyer')
+
+
+def log_msg(**kwargs):
+    msg = "\n\t\t"
+    for k, v in kwargs.iteritems():
+        if isinstance(v, dict) or isinstance(v, list):
+            v = "\n" + pp.pformat(v)
+        msg += '%s: >%s<, ' % (k, v)
+    return msg
 
 class jQTree(object):
     def __init__(self):
-        self.pp = pprint.PrettyPrinter(indent=4)
         self.tree_list = []
         self.tree_dict = {}
 
@@ -70,10 +80,9 @@ class DirTreeUI(jQTree):
             streamer_dict[parent].append(node_dict)
         self.tree_list = tree_list
         self.tree_dict = self.ck_for_kids(streamer_dict)
-        print "jQueryUtils.DirTreeUI#make_tree: streamer_dict:\n", pp.pprint(
-            streamer_dict)
-        print "jQueryUtils.DirTreeUI#make_tree: tree_list:\n", pp.pprint(
-            tree_list)
+        logger.debug(log_msg(
+            streamer_dict=streamer_dict,
+            tree_list=tree_list))
 
     def ck_for_kids(self, sdict):
         """
@@ -108,8 +117,9 @@ class DirTreeUI(jQTree):
 
     def get_tree_branch_dict(self, dir_id):
         x = self.tree_dict[dir_id]
-        print "jQueryUtils.DirTreeUI#get_tree_branch_dict[", dir_id, "]:\n", pp.pprint(
-            x)
+        logger.debug(log_msg(
+            dir_id=dir_id,
+            tree_dict=x))
         return x
 
     def get_tree_branches(self, dir_ids):
