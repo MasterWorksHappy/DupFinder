@@ -1,0 +1,34 @@
+{% extends "base2.html" %}
+{% block content %}
+<h1>
+    <button name="submit" type="submit" class="btn btn-default">Submit</button>
+    Pick Files for Re-assignment
+</h1>
+<div class="container-fluid">
+    <table id="myTable" class="table table-bordered">
+        <tbody>
+        <tr>
+            {%- for result in results %}
+        <tr>
+            <!--<td colspan="2">-->
+            {% for img_url in result %}
+            <td>
+                <a href="{{ img_url }}">
+                    <img src="{{ img_url }}" class="img-circle" width="75" height="75">
+                </a>
+            </td>
+            {% endfor %}
+        </tr>
+        <tr>
+            <td colspan="3">
+                {% for img_url in result %}
+                <div>{{ img_url }}</div>
+                {% endfor %}
+            </td>
+        </tr>
+        {% endfor %}
+        </tr>
+        </tbody>
+    </table>
+</div>
+{% endblock %}

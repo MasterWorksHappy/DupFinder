@@ -1,0 +1,7 @@
+{% extends "dupRunner/base2.html" %}
+{% block content %}
+<h1>Good Job!! No duplicates found!</h1>
+{%- for dir in dir_list %}
+<h2>Examined files in {{ dir }}</h2>
+{% endfor %}
+{% endblock %}

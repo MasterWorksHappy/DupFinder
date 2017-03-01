@@ -1,0 +1,49 @@
+{% extends "dupRunner/base2.html" %}
+{% block content %}
+<h1>
+    <button name="submit" type="submit" class="btn btn-default">Submit</button>
+    Cleanup! Cleanup! Select Images for Removal
+</h1>
+<h2>
+    {{ num_dirs_searched }} Directories were searched, {{ num_dups_found }} duplicate files found.
+</h2>
+<div id="mydirtree" class="resTree"></div>
+
+<script>
+    $(function () {
+        $('#mydirtree').jstree({
+            'core': {
+                "themes" : {
+                    "variant" : "large"
+                },
+                'data': {
+                    "url": "{{ url_for('dupRunner.get_pic') }}",
+                    "dataType" : "json",
+                    "data": function (node) {
+                        return { "id" : node.id };
+                    }
+                }
+            },
+            'checkbox': {'keep_selected_style': true},
+            'plugins': ['checkbox', 'themes']
+        });
+        $("button").click(function () {
+            var pdirs = $('#mydirtree').jstree("get_selected")
+            $.ajax({
+                url: "{{ url_for('dupRunner.move_the_files') }}",
+                data: JSON.stringify(pdirs),
+                contentType: "application/json",
+                type: "POST",
+                success: function (result) {
+                    console.log(result);
+                    window.location.href = "{{ url_for('dupRunner.success') }}";
+                },
+                error: function (error) {
+                    console.log(error);
+                }
+            });
+        });
+    });
+
+</script>
+{% endblock %}
